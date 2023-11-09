@@ -1,0 +1,8 @@
+;; -*- mode: scheme -*-
+[(lambda (true)
+   [(lambda (false)
+      [(lambda (if)
+         ....)
+       (lambda (if:condition) (lambda (if:true) (lambda (if:false) [(if:condition if:true) if:false])))])
+    (lambda (false:1st) (lambda (false:2nd) false:2nd))])
+ (lambda (true:1st) (lambda (true:2nd) true:1st))]

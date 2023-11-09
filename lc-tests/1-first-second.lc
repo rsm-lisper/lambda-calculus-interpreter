@@ -1,0 +1,6 @@
+;; -*- mode: scheme -*-
+[(lambda (first)
+   [(lambda (second)
+      ....)
+    (lambda (second:1st) (lambda (second:2nd) second:2nd))])
+ (lambda (first:1st) (lambda (first:2nd) first:1st))]
