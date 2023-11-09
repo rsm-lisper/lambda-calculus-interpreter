@@ -1,0 +1,9 @@
+;; -*- mode: scheme -*-
+
+[(lambda (select-first)
+   [(lambda (select-second)
+      [(lambda (make-pair)
+         ((make-pair <ARG1>) <ARG2>))
+       (lambda (make-pair:1st) (lambda (make-pair:2nd) (lambda (make-pair:sel) ((make-pair:sel make-pair:1st) make-pair:2nd))))])
+    (lambda (select-second:1st) (lambda (select-second:2nd) select-second:2nd))])
+ (lambda (select-first:1st) (lambda (select-first:2nd) select-first:1st))]

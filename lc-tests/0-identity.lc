@@ -1,4 +1,5 @@
 ;; -*- mode: scheme -*-
-((lambda (identity)
-   ....)
- (lambda (identity:x) identity:x))
+
+[(lambda (identity)
+   (identity <TEST-ARG>))
+ (lambda (identity:x) identity:x)]
