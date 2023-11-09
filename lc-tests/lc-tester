@@ -1,0 +1,22 @@
+#!/usr/bin/guile \
+-e lc-tester-main -s
+!#
+;; -*- mode: scheme -*-
+
+(define (curr-fname)
+  (let [(fname (current-filename))]
+    (if fname fname "lc-tester")))
+
+(define (lc-tester-main args)
+  (cond [(= 3 (length args))
+         ([@@ (lambda-calculus-interpreter lc-tests lc-tester) lc-tester] (cadr args) (caddr args))]
+        [else
+         (display (string-append (curr-fname) " usage: <interpreter-type> <source.lc>\nexample: " (curr-fname) " scm 0-identity.lc\n"))]))
+
+
+(define-module (lambda-calculus-interpreter lc-tests lc-tester)
+  #:export (lc-tester))
+
+(define (lc-tester interp-type source-fname)
+  (system (string-append
+           "../lci." interp-type " < " source-fname)))
