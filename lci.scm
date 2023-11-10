@@ -3,10 +3,6 @@
 !#
 ;; -*- mode: scheme -*-
 
-(define REPL-PROMPT "λ> ")
-(define WELCOME-MESSAGE
-  "Lambda Calculus Interpreter. Author: Rafał -rsm- Marek <rsm@disroot.org>. License MIT. (Quit: C-d)")
-
 (define (read-exp)
   (read (current-input-port)))
 
@@ -34,11 +30,7 @@
          (print-exp
           (eval-exp s-exp
                     (lambda (e) e)))
-         (display REPL-PROMPT)
          (repl (read-exp))]))
 
 (define (main args)
-  (display WELCOME-MESSAGE) (newline)
-  (display REPL-PROMPT)
-  (repl (read-exp))
-  (newline))
+  (repl (read-exp)))
