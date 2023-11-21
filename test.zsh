@@ -14,7 +14,7 @@ for INTERP_NAME in lci.*; do
         fi
         if [[ `diff $TEST_EXPECT_OUTPUT_FILE $TEST_OUTPUT_FILE` != "" ]]; then
             echo "OUTPUT DIFFERENT THEN EXPECTED:\n"
-            diff --color=always $TEST_EXPECT_OUTPUT_FILE $TEST_OUTPUT_FILE
+            diff --side-by-side --color=always $TEST_EXPECT_OUTPUT_FILE $TEST_OUTPUT_FILE
         fi
         echo "----------"
     done
