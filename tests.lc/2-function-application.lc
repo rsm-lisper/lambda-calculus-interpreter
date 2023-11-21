@@ -2,6 +2,12 @@
 
 [(lambda (identity)
    [(lambda (func-apply)
+
       ((func-apply identity) <TEST_ARG>))
-    (lambda (func-apply:func) (lambda (func-apply:arg) (func-apply:func func-apply:arg)))])
- (lambda (identity:i) identity:i)]
+
+    (lambda (func-apply:func)
+      (lambda (func-apply:arg)
+        (func-apply:func func-apply:arg)))])
+
+ (lambda (identity:i)
+   identity:i)]
