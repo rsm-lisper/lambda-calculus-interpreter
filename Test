@@ -1,0 +1,52 @@
+#!/bin/zsh
+
+TEST_OUTPUT_FILE=/tmp/lc-test-output
+TEST_ERROR_FILE=/tmp/lc-test-error
+COLOR_RED="\x1b[38;5;1m"
+COLOR_YELLOW="\x1b[38;5;11m"
+COLOR_GREEN="\x1b[38;5;2m"
+COLOR_WHITE="\x1b[38;5;15m"
+COLOR_BLACK="\x1b[38;5;0m"
+BG_RED="\x1b[48;5;9m"
+BG_GREEN="\x1b[48;5;2m"
+BG_BLACK="\x1b[48;5;0m"
+
+TEST_COUNT=0
+ERROR_COUNT=0
+for INTERP_NAME in lci.*; do
+    for LC_FILE in tests.lc/*.lc; do
+        TEST_ERROR=0
+        TEST_COUNT=$(($TEST_COUNT+1))
+        echo -n "* $INTERP_NAME $LC_FILE:"
+        TEST_EXPECT_OUTPUT_FILE=$LC_FILE-expect
+        ./$INTERP_NAME < $LC_FILE > $TEST_OUTPUT_FILE 2> $TEST_ERROR_FILE
+        if [[ `cat $TEST_ERROR_FILE` != "" ]]; then
+            TEST_ERROR=1
+            echo "\n"$COLOR_YELLOW$BG_RED"STDERR OUTPUT:"$COLOR_RED$BG_BLACK
+            cat $TEST_ERROR_FILE
+            echo -n $COLOR_WHITE$BG_BLACK
+        fi
+        if [[ `diff $TEST_EXPECT_OUTPUT_FILE $TEST_OUTPUT_FILE` != "" ]]; then
+            TEST_ERROR=1
+            echo "\n"$COLOR_YELLOW$BG_RED"STDOUT DIFFERENT THEN EXPECTED:"$COLOR_WHITE$BG_BLACK
+            diff --side-by-side --color=always $TEST_EXPECT_OUTPUT_FILE $TEST_OUTPUT_FILE
+        fi
+        if (( $TEST_ERROR )); then
+            ERROR_COUNT=$(($ERROR_COUNT+1))
+            echo "----------\n"
+        else
+            echo " ["$COLOR_GREEN"ok"$COLOR_WHITE"]"
+        fi
+    done
+done
+
+echo "\n -SUMMARY-\nTests performed: "$TEST_COUNT
+echo -n "Number of errors: "
+if (( $ERROR_COUNT )); then
+    echo -n $BG_RED
+else
+    echo -n $COLOR_BLACK$BG_GREEN
+fi
+echo " "$ERROR_COUNT" "$COLOR_WHITE$BG_BLACK
+
+rm $TEST_OUTPUT_FILE $TEST_ERROR_FILE
