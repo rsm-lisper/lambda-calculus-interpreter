@@ -9,11 +9,11 @@ Project in its early stage.
 
 Expression can be a **name** to identify an abstraction point, a **function** to introduce an abstraction or a **function application** to specialize an abstraction.
 
-<expression> ::= <name> | <function> | <application>
+`<expression>` ::= `<name>` | `<function>` | `<application>`
 
 ## Name
 
-Any sequence of non-special characters. Special characters are: ` `, `(`, `)`, `[`, `]`, `;`. For example:
+Any sequence of non-special characters. Special characters are: ` `, `(`, `)`, `[`, `]`, and `;`. For example:
 
 ```
 10 some 7-and-not-5 :other: 0.0.111 -->
@@ -23,11 +23,11 @@ Any sequence of non-special characters. Special characters are: ` `, `(`, `)`, `
 
 Lambda function is an abstraction over a lambda expression and has the form:
 
-<function> ::= (lambda (<name>) <body>)
+`<function>` ::= `(lambda (<name>) <body>)`
 
 where:
 
-<body> ::= <expression>
+`<body>` ::= `<expression>`
 
 For example:
 ```scheme
@@ -42,12 +42,12 @@ For example:
 
 A function application has the form:
 
-<application> ::= (<function-expression> <argument-expression>)
+`<application>` ::= `(<function-expression> <argument-expression>)`
 
 where:
 
-<function-expression> ::= <expression>
-<argument-expression ::= <expression>
+`<function-expression>` ::= `<expression>`
+`<argument-expression` ::= `<expression>`
 
 For example:
 ```scheme
