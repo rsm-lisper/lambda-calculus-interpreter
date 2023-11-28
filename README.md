@@ -30,6 +30,7 @@ where:
 `<body>` ::= `<expression>`
 
 For example:
+
 ```scheme
 (lambda (x) x)
 
@@ -47,9 +48,11 @@ A function application has the form:
 where:
 
 `<function-expression>` ::= `<expression>`
+
 `<argument-expression` ::= `<expression>`
 
 For example:
+
 ```scheme
 ((lambda (x) x) 100)
 
