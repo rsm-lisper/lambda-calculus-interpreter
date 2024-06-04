@@ -83,6 +83,12 @@ char *svalue (PData d)
   return d->data.symbol;
 }
 
+int sequal (PData sa, PData sb)
+{
+  assert(is_symbol(sa) && is_symbol(sb));
+  return strcmp(svalue(sa), svalue(sb)) == 0;
+}
+
 PData make_symbol (char *str)
 {
   PData s = malloc(sizeof(TData));
@@ -283,27 +289,28 @@ PData read_expr (void)
 PData eval_expr (PData expr, PData env)
 {
   if (is_pair(expr) && is_symbol(pfirst(expr)) &&
-      strcmp("quote", svalue(pfirst(expr))) == 0) {
+      sequal(make_symbol("quote"), pfirst(expr))) {
     return pnext(expr);
   }
-
+  
   if (is_symbol(expr)) {
-    /* return local_env(expr->data); */
-    
-  }
-
-  if (is_pair(expr) && list_length(expr) == 3 &&
-      is_symbol(pfirst(expr)) && strcmp("lambda", pfirst(expr)->data.symbol) == 0) {
     /* */
     
   }
+  else {
+    if (list_length(expr) == 3 && is_symbol(pfirst(expr)) &&
+        sequal(make_symbol("lambda"), pfirst(expr))) {
+      /* */
+    
+    }
 
-  if (is_pair(expr) && list_length(expr) == 2) {
-    /* */
+    if (list_length(expr) == 2) {
+      /* */
 
+    }
   }
 
-  if (env != NULL) expr = env;
+  if (env != NULL) expr = env; /* just to trick Wall for now */
   fputs("ERROR! eval_expr(): unrecognised expression\n", stderr);
   return expr;
   /*
