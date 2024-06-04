@@ -7,7 +7,7 @@
       T O O L S
 ********************/
 
-/***   C H A R / S T R I N G   ***/
+/***   C H A R   /   S T R I N G   ***/
 
 # define ungetchar(C) ungetc((C), stdin)
 
@@ -187,6 +187,7 @@ PData printPairTree (PData pair)
     pair = pairNext(pair);
   }
   putchar(')');
+  
   return p0;
 }
 
