@@ -19,7 +19,7 @@ char *strdup (const char *str)
   return ret;
 }
 
-void eat_wspace_comment ()
+void eat_wspace_comment (void)
 {
   int c;
   while ((c = getchar()) != EOF && strchr("; \t\r\n", c) != NULL)
@@ -40,7 +40,7 @@ struct _tnode {
   void *next;
 };
 
-PNode makeNode (void *first, void *next)
+PNode make_node (void *first, void *next)
 {
   PNode node = malloc(sizeof(TNode));
   assert(node != NULL);
@@ -49,9 +49,9 @@ PNode makeNode (void *first, void *next)
   return node;
 }
 
-void delNode (PNode node)
+void del_node (PNode n)
 {
-  free(node);
+  free(n);
 }
 
 /***   D A T A   /   D A T A   T Y P E S   ***/
@@ -70,171 +70,178 @@ struct _tdata {
   } data;
 };
 
-PData isSymbol (PData data)
+PData is_symbol (PData d)
 {
-  if (data && data->type == D_SYMBOL)
-    return data;
+  if (d && d->type == D_SYMBOL)
+    return d;
   return NULL;
 }
 
-PData makeSymbol (char *string)
+char *svalue (PData d)
 {
-  PData symbol = malloc(sizeof(TData));
-  assert(symbol != NULL);
-  symbol->type = D_SYMBOL;
-  symbol->data.symbol = string;
-  return symbol;
+  assert(is_symbol(d));
+  return d->data.symbol;
 }
 
-void delSymbol (PData symbol)
+PData make_symbol (char *str)
 {
-  assert(isSymbol(symbol));
-  free(symbol);
+  PData s = malloc(sizeof(TData));
+  assert(s != NULL);
+  s->type = D_SYMBOL;
+  s->data.symbol = str;
+  return s;
 }
 
-PData printSymbol (PData symbol)
+void del_symbol (PData s)
 {
-  assert(isSymbol(symbol));
-  fputs(symbol->data.symbol, stdout);
-  return symbol;
+  assert(is_symbol(s));
+  free(s);
+}
+
+PData print_symbol (PData s)
+{
+  assert(is_symbol(s));
+  fputs(s->data.symbol, stdout);
+  return s;
 }
 
 # define MAXSYMBOL 256
 
-PData readSymbol ()
+PData read_symbol (void)
 {
-  char symbol[MAXSYMBOL];
+  char s[MAXSYMBOL];
   int c, i = 0;
 
-  while (i < MAXSYMBOL && (c = getchar()) != EOF && strchr("()[]; \t\r\n", c) == NULL)
-    symbol[i++] = c;
+  while (i < MAXSYMBOL && (c = getchar()) != EOF &&
+         strchr("()[]; \t\r\n", c) == NULL) {
+    s[i++] = c;
+  }
   if (i == MAXSYMBOL)
     i--;
   else
     ungetchar(c);
-  symbol[i] = '\0';
+  s[i] = '\0';
 
-  return makeSymbol(strdup(symbol));
+  return make_symbol(strdup(s));
 }
 
-PData isPair (PData data)
+PData is_pair (PData d)
 {
-  if (data && data->type == D_PAIR)
-    return data;
+  if (d && d->type == D_PAIR)
+    return d;
   return NULL;
 }
 
-PData makePair (PData first, PData next)
+PData make_pair (PData first, PData next)
 {
-  PData pair = malloc(sizeof(TData));
-  assert(pair != NULL);
-  PNode node = makeNode(first, next);
-  pair->type = D_PAIR;
-  pair->data.pair = node;
-  return pair;
+  PData p = malloc(sizeof(TData));
+  assert(p != NULL);
+  PNode n = make_node(first, next);
+  p->type = D_PAIR;
+  p->data.pair = n;
+  return p;
 }
 
-void delPair (PData pair)
+void del_pair (PData p)
 {
-  assert(isPair(pair));
-  delNode(pair->data.pair);
-  free(pair);
+  assert(is_pair(p));
+  del_node(p->data.pair);
+  free(p);
 }
 
-PData pairFirst (PData pair)
+PData pfirst (PData p)
 {
-  assert(isPair(pair));
-  return pair->data.pair->first;
+  assert(is_pair(p));
+  return p->data.pair->first;
 }
 
-PData pairNext (PData pair)
+PData pnext (PData p)
 {
-  assert(isPair(pair));
-  return pair->data.pair->next;
+  assert(is_pair(p));
+  return p->data.pair->next;
 }
 
-void delPairTree (PData pair)
+void del_pair_tree (PData p)
 {
-  assert(isPair(pair));
-  if (isPair(pairFirst(pair)))
-    delPairTree(pairFirst(pair));
-  if (isPair(pairNext(pair)))
-    delPairTree(pairNext(pair));
-  delPair(pair);
+  assert(is_pair(p));
+  if (is_pair(pfirst(p)))
+    del_pair_tree(pfirst(p));
+  if (is_pair(pnext(p)))
+    del_pair_tree(pnext(p));
+  del_pair(p);
 }
 
-PData printPairTree (PData pair)
+PData print_pair_tree (PData p)
 {
-  PData p0 = pair;
+  PData p0 = p;
   int i = 0;
 
-  if (!isPair(pair))
-    return pair;
+  if (!is_pair(p))
+    return p;
 
   putchar('(');
-  while (isPair(pair)) {
+  while (is_pair(p)) {
     if (i) putchar(' ');
     else i = 1;
 
-    if (isSymbol(pairFirst(pair)))
-      printSymbol(pairFirst(pair));
+    if (is_symbol(pfirst(p)))
+      print_symbol(pfirst(p));
     else {   /* pair */
-      if (pairFirst(pair) == NULL)
+      if (pfirst(p) == NULL)
         fputs("()", stdout);
       else
-        printPairTree(pairFirst(pair));
+        print_pair_tree(pfirst(p));
     }
-    pair = pairNext(pair);
+    p = pnext(p);
   }
   putchar(')');
   
   return p0;
 }
 
-int readPairTree (PData *pairs_read)
+int read_pair_tree (PData *pread)
 {
-  PData pair = *pairs_read = NULL, sub_pair;
+  PData p = *pread = NULL, sub_p;
   int c, r, i = 0;
   
   eat_wspace_comment();
   while ((c = getchar()) != ')' && c != ']') {
     if (c == EOF) {
-      printf("ERROR! readPairTree: missing closing paren\n");
+      fputs("ERROR! read_pair_tree(): missing closing paren\n", stderr);
       return -1;
     }
     if (c == '(' || c == '[') {
-      if ((r = readPairTree(&sub_pair)) < 0)
+      if ((r = read_pair_tree(&sub_p)) < 0)
         return r;
-      if (*pairs_read == NULL)
-        *pairs_read = pair = makeNode(NODETYPE_NODE, sub_pair, NULL);
+      if (*pread == NULL)
+        *pread = p = make_pair(sub_p, NULL);
       else {
-        pair->next = makeNode(NODETYPE_NODE, sub_pair, NULL);
-        pair = pair->next;
+        p->data.pair->next = make_pair(sub_p, NULL);
+        p = p->data.pair->next;
       }
     }
     else {
       ungetchar(c);
-      if (*pairs_read == NULL)
-        *pairs_read = pair = makeNode(NODETYPE_SYMBOL, readSymbol(), NULL);
+      if (*pread == NULL)
+        *pread = p = make_pair(read_symbol(), NULL);
       else {
-        pair->next = makeNode(NODETYPE_SYMBOL, readSymbol(), NULL);
-        pair = pair->next;
+        p->data.pair->next = make_pair(read_symbol(), NULL);
+        p = pnext(p);
       }
     }
     i++;
     eat_wspace_comment();
   }
-
   return i;
 }
 
-int listLength (PData list)
+int list_length (PData list)
 {
   int len = 0;
-  assert(isPair(list));
+  assert(is_pair(list));
   while (list != NULL) {
     len++;
-    list = pairNext(list);
+    list = pnext(list);
   }
   return len;
 }
@@ -245,9 +252,9 @@ int listLength (PData list)
 ****************/
 
 /***   R E A D E R   ***/
-PNode read_expr ()
+PData read_expr (void)
 {
-  PNode expr, list;
+  PData expr;
   int c;
   
   eat_wspace_comment();
@@ -255,48 +262,50 @@ PNode read_expr ()
   if (c == EOF)
     return NULL;
   if (c == ')' || c == ']') {
-    printf("read_expr error: too many parens\n");
+    fputs("ERROR! read_expr(): too many parens\n", stderr);
     return NULL;
   }
   if (c == '(' || c == '[') {
-      if (readNodes(&list) < 0)
-        return NULL;
-    expr = makeNode(NODETYPE_NODE, list, NULL);
+    if (read_pair_tree(&expr) < 0)
+      return NULL;
+    else
+      return expr;
   }
   else {
     ungetchar(c);
-    expr = makeNode(NODETYPE_SYMBOL, readSymbol(), NULL);
+    expr = read_symbol();
   }
   return expr;
 }
 
 
 /***   E V A L U A T O R   ***/
-PNode print_expr (PNode expr);
-
-PNode eval_expr (PNode expr, PNode env)
+PData eval_expr (PData expr, PData env)
 {
-  if (listLength(expr) > 1 &&
-      expr->type == NODETYPE_SYMBOL &&
-      strcmp("quote", expr->data) == 0) {
-    return expr->next;
-  }
-  /*
-  if (expr->type == NODETYPE_SYMBOL)
-    return local_env(expr->data);
-  */
-
-  if (listLength(expr) == 3 && expr->type == NODETYPE_SYMBOL && strcmp("lambda", expr->data) == 0) {
-
+  if (is_pair(expr) && is_symbol(pfirst(expr)) &&
+      strcmp("quote", svalue(pfirst(expr))) == 0) {
+    return pnext(expr);
   }
 
-  if (listLength(expr) == 2) {
+  if (is_symbol(expr)) {
+    /* return local_env(expr->data); */
+    
+  }
+
+  if (is_pair(expr) && list_length(expr) == 3 &&
+      is_symbol(pfirst(expr)) && strcmp("lambda", pfirst(expr)->data.symbol) == 0) {
+    /* */
+    
+  }
+
+  if (is_pair(expr) && list_length(expr) == 2) {
+    /* */
 
   }
 
-  fputs("eval_expr error: unrecognised expression:\n", stdout);
-  print_expr(expr);
-  return env;
+  if (env != NULL) expr = env;
+  fputs("ERROR! eval_expr(): unrecognised expression\n", stderr);
+  return expr;
   /*
   return
     is_string($expr) ? $local_env($expr) :
@@ -315,35 +324,39 @@ PNode eval_expr (PNode expr, PNode env)
 
 
 /***   P R I N T E R   ***/
-PNode print_expr (PNode expr)
+PData print_expr (PData expr)
 {
   if (expr == NULL) {
-    fputs("[NULL]\n", stdout);
+    puts("[NULL]\n");
     return NULL;
   }
-  if (expr->type == NODETYPE_SYMBOL)
-    printSymbol(expr->data);
-  else {         /* NODETYPE_NODE */
-    if (expr->data == NULL)
+  if (is_symbol(expr))
+    print_symbol(expr);
+  else {
+    if (pfirst(expr) == NULL)
       fputs("()", stdout);
     else
-      printNodes(expr->data);
+      print_pair_tree(expr);
   }
   putchar('\n');
   return expr;
 }
 
+void del_expr (PData expr)
+{
+  if (is_symbol(expr))
+    del_symbol(expr);
+  else
+    del_pair_tree(expr);
+}
 
 /***   M A I N   L O O P  ***/
 int main ()
 {
-  PNode expr;
+  PData expr;
   while ((expr = read_expr()) != NULL) {
-    if (expr->type == NODETYPE_SYMBOL)
-      printf("%s\n", (char*) expr->data);
-    else
-      print_expr(eval_expr(expr->data, NULL));
-    delNodes(expr);
+    print_expr(eval_expr(expr, NULL));
+    del_expr(expr);
   }
   return 0;
 }
