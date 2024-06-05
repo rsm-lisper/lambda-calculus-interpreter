@@ -3,9 +3,10 @@
 # include <stdlib.h>
 # include <assert.h>
 
-/*******************
-      T O O L S
-********************/
+/*********************/
+/***   T O O L S   ***/
+/*********************/
+
 
 /***   C H A R   /   S T R I N G   ***/
 
@@ -54,7 +55,10 @@ void del_node (PNode n)
   free(n);
 }
 
+
+/*********************************************/
 /***   D A T A   /   D A T A   T Y P E S   ***/
+/*********************************************/
 
 enum TDataTypes {
   D_SYMBOL,
@@ -70,6 +74,8 @@ struct _tdata {
   } data;
 };
 
+
+/***   S Y M B O L   ***/
 PData is_symbol (PData d)
 {
   if (d && d->type == D_SYMBOL)
@@ -131,6 +137,8 @@ PData read_symbol (void)
   return make_symbol(strdup(s));
 }
 
+
+/***   P A I R   ***/
 PData is_pair (PData d)
 {
   if (d && d->type == D_PAIR)
@@ -142,9 +150,8 @@ PData make_pair (PData first, PData next)
 {
   PData p = malloc(sizeof(TData));
   assert(p != NULL);
-  PNode n = make_node(first, next);
   p->type = D_PAIR;
-  p->data.pair = n;
+  p->data.pair = make_node(first, next);
   return p;
 }
 
@@ -165,6 +172,18 @@ PData pnext (PData p)
 {
   assert(is_pair(p));
   return p->data.pair->next;
+}
+
+PData set_pfirst (PData p, PData val)
+{
+  assert(is_pair(p));
+  return p->data.pair->first = val;
+}
+
+PData set_pnext (PData p, PData val)
+{
+  assert(is_pair(p));
+  return p->data.pair->next = val;
 }
 
 void del_pair_tree (PData p)
@@ -207,8 +226,8 @@ PData print_pair_tree (PData p)
 
 int read_pair_tree (PData *pread)
 {
-  PData p = *pread = NULL, sub_p;
-  int c, r, i = 0;
+  PData p = *pread = NULL;
+  int c, i = 0;
   
   eat_wspace_comment();
   while ((c = getchar()) != ')' && c != ']') {
@@ -217,13 +236,15 @@ int read_pair_tree (PData *pread)
       return -1;
     }
     if (c == '(' || c == '[') {
+      PData sub_p;
+      int r;
       if ((r = read_pair_tree(&sub_p)) < 0)
         return r;
       if (*pread == NULL)
         *pread = p = make_pair(sub_p, NULL);
       else {
-        p->data.pair->next = make_pair(sub_p, NULL);
-        p = p->data.pair->next;
+        set_pnext(p, make_pair(sub_p, NULL));
+        p = pnext(p);
       }
     }
     else {
@@ -231,7 +252,7 @@ int read_pair_tree (PData *pread)
       if (*pread == NULL)
         *pread = p = make_pair(read_symbol(), NULL);
       else {
-        p->data.pair->next = make_pair(read_symbol(), NULL);
+        set_pnext(p, make_pair(read_symbol(), NULL));
         p = pnext(p);
       }
     }
@@ -241,6 +262,8 @@ int read_pair_tree (PData *pread)
   return i;
 }
 
+
+/***   L I S T S   ***/
 int list_length (PData list)
 {
   int len = 0;
@@ -268,9 +291,10 @@ PData assoc_lookup (PData assoc_list, PData key)
 }
 
 
-/***************
-      L C I
-****************/
+/****************************************************************/
+/***   L A M B D A   C A L C U L U S   I N T E R P R E T E R  ***/
+/****************************************************************/
+
 
 /***   R E A D E R   ***/
 PData read_expr (void)
