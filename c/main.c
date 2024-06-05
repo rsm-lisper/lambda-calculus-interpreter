@@ -252,6 +252,21 @@ int list_length (PData list)
   return len;
 }
 
+PData assoc_add (PData assoc_list, PData key, PData value)
+{
+  return make_pair(make_pair(key, value), assoc_list);
+}
+
+PData assoc_lookup (PData assoc_list, PData key)
+{
+  while (assoc_list) {
+    if (sequal(pfirst(pfirst(assoc_list)), key))
+      return pfirst(assoc_list);
+    assoc_list = pnext(assoc_list);
+  }
+  return NULL;
+}
+
 
 /***************
       L C I
@@ -286,6 +301,13 @@ PData read_expr (void)
 
 
 /***   E V A L U A T O R   ***/
+int is_lambda (PData expr)
+{
+  return (is_pair(expr) && list_length(expr) == 3 &&
+          is_symbol(pfirst(expr)) &&
+          sequal(pfirst(expr), make_symbol("lambda")));
+}
+
 PData eval_expr (PData expr, PData env)
 {
   if (is_pair(expr) && is_symbol(pfirst(expr)) &&
@@ -294,39 +316,29 @@ PData eval_expr (PData expr, PData env)
   }
   
   if (is_symbol(expr)) {
-    /* */
-    
-  }
-  else {
-    if (list_length(expr) == 3 && is_symbol(pfirst(expr)) &&
-        sequal(make_symbol("lambda"), pfirst(expr))) {
-      /* */
-    
-    }
-
-    if (list_length(expr) == 2) {
-      /* */
-
-    }
+    PData kval = assoc_lookup(env, expr);
+    return kval ? pnext(kval) : expr;
   }
 
-  if (env != NULL) expr = env; /* just to trick Wall for now */
-  fputs("ERROR! eval_expr(): unrecognised expression\n", stderr);
+  if (is_lambda(expr))
+    return expr;
+
+  if (is_pair(expr) && list_length(expr) == 2) {
+    PData lambda = eval_expr(pfirst(expr), env);
+    PData arg = eval_expr(pfirst(pnext(expr)), env);
+    if (!is_lambda(lambda)) {
+      fputs("ERROR! eval_expr(): expression is not a lambda\n", stderr);
+      return lambda;
+    }
+    PData new_env = assoc_add(env, pfirst(pfirst(pnext(lambda))), arg);
+    PData new_expr = eval_expr(pfirst(pnext(pnext(lambda))), new_env);
+    del_pair(new_env);
+    return new_expr;
+  }
+
+  fprintf(stderr, "ERROR! eval_expr(): unrecognised expression\n---\n");
+  print_pair_tree(expr);
   return expr;
-  /*
-  return
-    is_string($expr) ? $local_env($expr) :
-    (is_array($expr) && count($expr) == 3 && $expr[0] === 'lambda' ?
-     function ($arg) use ($expr, $local_env) {
-      return eval_expr($expr[2],
-                       function ($symbol) use ($arg, $expr, $local_env) {
-                         return $symbol === $expr[1][0] ? $arg : $local_env($symbol);
-                       });
-    } :
-     (is_array($expr) && count($expr) == 2 ?
-      eval_expr($expr[0], $local_env)(eval_expr($expr[1], $local_env)) :
-      "*eval-error*"));
-  */
 }
 
 
@@ -367,3 +379,21 @@ int main ()
   }
   return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
