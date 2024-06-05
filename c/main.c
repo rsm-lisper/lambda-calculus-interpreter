@@ -361,6 +361,8 @@ PData print_expr (PData expr)
   return expr;
 }
 
+
+/***   M A I N   L O O P  ***/
 void del_expr (PData expr)
 {
   if (is_symbol(expr))
@@ -369,7 +371,6 @@ void del_expr (PData expr)
     del_pair_tree(expr);
 }
 
-/***   M A I N   L O O P  ***/
 int main ()
 {
   PData expr;
@@ -379,21 +380,3 @@ int main ()
   }
   return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
