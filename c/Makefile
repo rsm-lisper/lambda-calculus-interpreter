@@ -1,8 +1,7 @@
 BINARY=lci
 
 CFILES=$(wildcard *.c)
-#TESTDIR=../tests.lc/
-TESTDIR=tests/
+TESTDIR=../tests.lc/
 TESTS=$(wildcard $(TESTDIR)*.lc)
 TEST_RESULTS=$(patsubst %.lc,%.res,$(TESTS))
 
