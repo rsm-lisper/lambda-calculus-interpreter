@@ -3,9 +3,9 @@
 # include <stdlib.h>
 # include <assert.h>
 
-/*********************/
-/***   T O O L S   ***/
-/*********************/
+/*****************************************/
+/***   L O W   L E V E L   T O O L S   ***/
+/*****************************************/
 
 
 /***   C H A R   /   S T R I N G   ***/
@@ -51,12 +51,6 @@ PNode make_node (void *first, void *next)
 }
 
 
-void del_node (PNode n)
-{
-  free(n);
-}
-
-
 /*********************************************/
 /***   D A T A   /   D A T A   T Y P E S   ***/
 /*********************************************/
@@ -79,6 +73,7 @@ struct _tdata {
 
 
 /***   S Y M B O L   ***/
+
 PData is_symbol (PData d)
 {
   if (d && d->type == D_SYMBOL)
@@ -105,12 +100,6 @@ PData make_symbol (char *str)
   s->type = D_SYMBOL;
   s->data.symbol = str;
   return s;
-}
-
-void del_symbol (PData s)
-{
-  assert(is_symbol(s));
-  free(s);
 }
 
 PData print_symbol (PData s, FILE *stream)
@@ -142,6 +131,7 @@ PData read_symbol (void)
 
 
 /***   P A I R   ***/
+
 PData is_pair (PData d)
 {
   if (d && d->type == D_PAIR)
@@ -156,13 +146,6 @@ PData make_pair (PData first, PData next)
   p->type = D_PAIR;
   p->data.pair = make_node(first, next);
   return p;
-}
-
-void del_pair (PData p)
-{
-  assert(is_pair(p));
-  del_node(p->data.pair);
-  free(p);
 }
 
 PData pfirst (PData p)
@@ -187,17 +170,6 @@ PData set_pnext (PData p, PData val)
 {
   assert(is_pair(p));
   return p->data.pair->next = val;
-}
-
-void del_data_tree();
-void del_pair_tree (PData p)
-{
-  assert(is_pair(p));
-  if (is_pair(pfirst(p)))
-    del_data_tree(pfirst(p));
-  if (is_pair(pnext(p)))
-    del_data_tree(pnext(p));
-  del_pair(p);
 }
 
 PData is_closure();
@@ -277,7 +249,9 @@ int read_pair_tree (PData *pread)
   return i;
 }
 
+
 /***   C L O S U R E   ***/
+
 PData is_closure (PData d)
 {
   if (d && d->type == D_CLOSURE)
@@ -292,13 +266,6 @@ PData make_closure (PData lambda, PData env)
   cl->type = D_CLOSURE;
   cl->data.closure = make_node(lambda, env);
   return cl;
-}
-
-void del_closure (PData cl)
-{
-  assert(is_closure(cl));
-  del_node(cl->data.closure);
-  free(cl);
 }
 
 PData closure_lambda (PData cl)
@@ -325,15 +292,6 @@ PData closure_env (PData cl)
   return cl->data.closure->next;
 }
 
-void del_closure_tree (PData cl)
-{
-  assert(is_closure(cl));
-  del_pair_tree(closure_lambda(cl));
-  del_pair_tree(closure_env(cl));
-  del_node(cl->data.closure);
-  free(cl);
-}
-
 PData print_data();
 PData print_closure (PData cl, FILE *stream)
 {
@@ -352,18 +310,8 @@ PData print_closure (PData cl, FILE *stream)
   return cl;
 }
 
+
 /***   D A T A   T O O L S   ***/
-void del_data_tree (PData d)
-{
-  if (is_symbol(d))
-    del_symbol(d);
-  else if (is_closure(d))
-    del_closure_tree(d);
-  else if (is_pair(d))
-    del_pair_tree(d);
-  else
-    (assert(d == NULL));
-}
 
 PData print_data (PData d, FILE *stream)
 {
@@ -409,8 +357,6 @@ PData assoc_lookup (PData assoc_list, PData key)
 /***   L A M B D A   C A L C U L U S   I N T E R P R E T E R  ***/
 /****************************************************************/
 
-
-/***   R E A D E R   ***/
 PData read_expr (void)
 {
   PData expr;
@@ -438,27 +384,34 @@ PData read_expr (void)
 }
 
 
-/***   E V A L U A T O R   ***/
+PData print_expr (PData expr)
+{
+  if (expr) {
+    print_data(expr, stdout);
+    fputc('\n', stdout);
+  }
+  else
+    puts("null");
+  return expr;
+}
+
+
 int is_lambda (PData expr)
 {
-  return (is_pair(expr) && list_length(expr) == 3 &&
-          is_symbol(pfirst(expr)) &&
-          sequal(pfirst(expr), make_symbol("lambda")));
+  return
+    (is_pair(expr) && list_length(expr) == 3 &&
+     is_symbol(pfirst(expr)) &&
+     sequal(pfirst(expr), make_symbol("lambda")));
 }
+
 
 PData eval_expr (PData expr, PData env)
 {
-# ifdef LCI_DEBUG
-  printf("{");
-  print_data(expr, stdout);
-  printf(", ");
-  print_data(env, stdout);
-  printf("}\n");
-# endif
-  
   PData ret = NULL;
-  
-  if (is_symbol(expr)) {
+
+  if (expr == NULL)
+    ;
+  else if (is_symbol(expr)) {
     PData kval = assoc_lookup(env, expr);
     ret = kval ? pnext(kval) : expr;
   }
@@ -469,64 +422,29 @@ PData eval_expr (PData expr, PData env)
     PData cl = eval_expr(pfirst(expr), env);
     PData arg = eval_expr(pfirst(pnext(expr)), env);
     if (!is_closure(cl)) {
-      fputs("ERROR! eval_expr(): expression is not a closure:\n", stderr);
+      fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
       print_data(cl, stderr);
+      fputs("\n\n", stderr);
       ret = NULL;
     }
     else {
       PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
       PData new_expr = eval_expr(closure_body(cl), new_env);
-      /*del_pair(new_env);*/
       ret = new_expr;
     }
   }
   else {
-    fputs("ERROR! eval_expr(): unrecognised expression:\n", stderr);
+    fputs("ERROR! eval_expr(): unrecognised expression: ", stderr);
     print_data(expr, stderr);
+    fputs("\n\n", stderr);
     ret = NULL;
   }
-# ifdef LCI_DEBUG
-  printf("EVAL: ");
-  print_data(expr, stdout);
-  printf("\n env: ");
-  print_data(env, stdout);
-  printf("\n => ");
-  print_data(ret, stdout);
-  printf("\n\n");
-# endif
-
   return ret;
 }
 
 
-/***   P R I N T E R   ***/
-PData print_expr (PData expr, FILE *stream)
-{
-  print_data(expr, stream);
-  fputc('\n', stream);
-  return expr;
-}
-
-
-/***   M A I N   L O O P  ***/
-void del_expr (PData expr)
-{
-  if (is_symbol(expr))
-    del_symbol(expr);
-  else if (is_closure(expr))
-    del_closure(expr);
-  else if (is_pair(expr))
-    del_pair_tree(expr);
-  else
-    assert(expr == NULL);
-}
-
 int main ()
 {
-  PData expr;
-  while ((expr = read_expr()) != NULL) {
-    print_expr(eval_expr(expr, NULL), stdout);
-    del_expr(expr);
-  }
+  print_expr(eval_expr(read_expr(), NULL));
   return 0;
 }
