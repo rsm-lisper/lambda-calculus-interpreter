@@ -1,0 +1,20 @@
+SUBDIRS=c php scheme
+
+TOPTARGETS=all check clean
+
+ANSIGREEN="\033[32m"
+ANSIYELLOW="\033[33m"
+ANSIBOLD="\033[1m"
+ANSIRST="\033[0m"
+ANSIGOK=" ["$(ANSIGREEN)"OK"$(ANSIRST)"] "
+
+MAKEFLAGS+=--silent
+
+$(TOPTARGETS): $(SUBDIRS)
+
+$(SUBDIRS):
+	echo "* Implementation "$(ANSIBOLD)$(ANSIYELLOW)$@$(ANSIRST)":"
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+	echo $(ANSIYELLOW)"..."$@$(ANSIRST)" done."
+
+.PHONY: $(TOPTARGETS) $(SUBDIRS)
