@@ -110,10 +110,10 @@ void del_symbol (PData s)
   free(s);
 }
 
-PData print_symbol (PData s)
+PData print_symbol (PData s, FILE *stream)
 {
   assert(is_symbol(s));
-  fputs(s->data.symbol, stdout);
+  fputs(s->data.symbol, stream);
   return s;
 }
 
@@ -196,7 +196,7 @@ void del_pair_tree (PData p)
   del_pair(p);
 }
 
-PData print_pair_tree (PData p)
+PData print_pair_tree (PData p, FILE *stream)
 {
   PData p0 = p;
   int i = 0;
@@ -204,22 +204,29 @@ PData print_pair_tree (PData p)
   if (!is_pair(p))
     return p;
 
-  putchar('(');
+  fputc('(', stream);
   while (is_pair(p)) {
-    if (i) putchar(' ');
+    if (i) fputc(' ', stream);
     else i = 1;
 
     if (is_symbol(pfirst(p)))
-      print_symbol(pfirst(p));
+      print_symbol(pfirst(p), stream);
     else {   /* pair */
       if (pfirst(p) == NULL)
-        fputs("()", stdout);
+        fputs("()", stream);
       else
-        print_pair_tree(pfirst(p));
+        print_pair_tree(pfirst(p), stream);
     }
     p = pnext(p);
   }
-  putchar(')');
+  if (p && is_symbol(p)) {
+    if (i) fputc(' ', stream);
+    else i = 1;
+
+    fputs(". ", stream);
+    print_symbol(p, stream);
+  }
+  fputc(')', stream);
   
   return p0;
 }
@@ -260,6 +267,17 @@ int read_pair_tree (PData *pread)
     eat_wspace_comment();
   }
   return i;
+}
+
+PData print_data (PData d, FILE *stream)
+{
+  if (is_symbol(d))
+    print_symbol(d, stream);
+  else if (is_pair(d))
+    print_pair_tree(d, stream);
+  else if (d == NULL)
+    fputs("()", stream);
+  return d;
 }
 
 
@@ -334,54 +352,52 @@ int is_lambda (PData expr)
 
 PData eval_expr (PData expr, PData env)
 {
-  if (is_pair(expr) && is_symbol(pfirst(expr)) &&
-      sequal(make_symbol("quote"), pfirst(expr))) {
-    return pnext(expr);
-  }
+  PData ret = NULL;
   
   if (is_symbol(expr)) {
     PData kval = assoc_lookup(env, expr);
-    return kval ? pnext(kval) : expr;
+    ret = kval ? pnext(kval) : expr;
   }
-
-  if (is_lambda(expr))
-    return expr;
-
-  if (is_pair(expr) && list_length(expr) == 2) {
+  else if (is_lambda(expr)) {
+    ret = expr;
+  }
+  else if (is_pair(expr) && list_length(expr) == 2) {
     PData lambda = eval_expr(pfirst(expr), env);
     PData arg = eval_expr(pfirst(pnext(expr)), env);
     if (!is_lambda(lambda)) {
-      fputs("ERROR! eval_expr(): expression is not a lambda\n", stderr);
-      return lambda;
+      fputs("ERROR! eval_expr(): expression is not a lambda:\n", stderr);
+      print_data(lambda, stderr);
+      ret = NULL;
     }
-    PData new_env = assoc_add(env, pfirst(pfirst(pnext(lambda))), arg);
-    PData new_expr = eval_expr(pfirst(pnext(pnext(lambda))), new_env);
-    del_pair(new_env);
-    return new_expr;
+    else {
+      PData new_env = assoc_add(env, pfirst(pfirst(pnext(lambda))), arg);
+      PData new_expr = eval_expr(pfirst(pnext(pnext(lambda))), new_env);
+      del_pair(new_env);
+      ret = new_expr;
+    }
   }
+  else {
+    fputs("ERROR! eval_expr(): unrecognised expression:\n", stderr);
+    print_data(expr, stderr);
+    ret = NULL;
+  }
+  printf("EVAL: ");
+  print_data(expr, stdout);
+  printf("\n env: ");
+  print_data(env, stdout);
+  printf("\n => ");
+  print_data(ret, stdout);
+  printf("\n");
 
-  fprintf(stderr, "ERROR! eval_expr(): unrecognised expression\n---\n");
-  print_pair_tree(expr);
-  return expr;
+  return ret;
 }
 
 
 /***   P R I N T E R   ***/
-PData print_expr (PData expr)
+PData print_expr (PData expr, FILE *stream)
 {
-  if (expr == NULL) {
-    puts("[NULL]\n");
-    return NULL;
-  }
-  if (is_symbol(expr))
-    print_symbol(expr);
-  else {
-    if (pfirst(expr) == NULL)
-      fputs("()", stdout);
-    else
-      print_pair_tree(expr);
-  }
-  putchar('\n');
+  print_data(expr, stream);
+  fputc('\n', stream);
   return expr;
 }
 
@@ -399,7 +415,7 @@ int main ()
 {
   PData expr;
   while ((expr = read_expr()) != NULL) {
-    print_expr(eval_expr(expr, NULL));
+    print_expr(eval_expr(expr, NULL), stdout);
     del_expr(expr);
   }
   return 0;
