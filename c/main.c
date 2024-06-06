@@ -407,39 +407,33 @@ int is_lambda (PData expr)
 
 PData eval_expr (PData expr, PData env)
 {
-  PData ret = NULL;
-
   if (expr == NULL)
-    ;
-  else if (is_symbol(expr)) {
+    return NULL;
+  if (is_symbol(expr)) {
     PData kval = assoc_lookup(env, expr);
-    ret = kval ? pnext(kval) : expr;
+    return kval ? pnext(kval) : expr;
   }
-  else if (is_lambda(expr)) {
-    ret = make_closure(expr, env);
+  if (is_lambda(expr)) {
+    return make_closure(expr, env);
   }
-  else if (is_pair(expr) && list_length(expr) == 2) {
+  if (is_pair(expr) && list_length(expr) == 2) {
     PData cl = eval_expr(pfirst(expr), env);
     PData arg = eval_expr(pfirst(pnext(expr)), env);
     if (!is_closure(cl)) {
       fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
       print_data(cl, stderr);
       fputs("\n\n", stderr);
-      ret = NULL;
+      return NULL;
     }
-    else {
-      PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
-      PData new_expr = eval_expr(closure_body(cl), new_env);
-      ret = new_expr;
-    }
+    PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
+    PData new_expr = eval_expr(closure_body(cl), new_env);
+    return new_expr;
   }
-  else {
-    fputs("ERROR! eval_expr(): unrecognised expression: ", stderr);
-    print_data(expr, stderr);
-    fputs("\n\n", stderr);
-    ret = NULL;
-  }
-  return ret;
+
+  fputs("ERROR! eval_expr(): unrecognised expression: ", stderr);
+  print_data(expr, stderr);
+  fputs("\n\n", stderr);
+  return NULL;
 }
 
 
