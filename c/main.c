@@ -189,13 +189,14 @@ PData set_pnext (PData p, PData val)
   return p->data.pair->next = val;
 }
 
+void del_data_tree();
 void del_pair_tree (PData p)
 {
   assert(is_pair(p));
   if (is_pair(pfirst(p)))
-    del_pair_tree(pfirst(p));
+    del_data_tree(pfirst(p));
   if (is_pair(pnext(p)))
-    del_pair_tree(pnext(p));
+    del_data_tree(pnext(p));
   del_pair(p);
 }
 
@@ -324,11 +325,24 @@ PData closure_env (PData cl)
   return cl->data.closure->next;
 }
 
+void del_closure_tree (PData cl)
+{
+  assert(is_closure(cl));
+  del_pair_tree(closure_lambda(cl));
+  del_pair_tree(closure_env(cl));
+  del_node(cl->data.closure);
+  free(cl);
+}
+
 PData print_data();
 PData print_closure (PData cl, FILE *stream)
 {
   assert(is_closure(cl));
-  fprintf(stream, "#<closure %p (", cl);
+# ifdef LCI_DEBUG
+  fprintf(stream, "#<closure %p (", cl);*/
+# else
+  fputs("#<closure (", stream);
+# endif
   print_symbol(closure_arg_name(cl), stream);
   fputs(") ", stream);
   print_data(closure_body(cl), stream);
@@ -339,6 +353,18 @@ PData print_closure (PData cl, FILE *stream)
 }
 
 /***   D A T A   T O O L S   ***/
+void del_data_tree (PData d)
+{
+  if (is_symbol(d))
+    del_symbol(d);
+  else if (is_closure(d))
+    del_closure_tree(d);
+  else if (is_pair(d))
+    del_pair_tree(d);
+  else
+    (assert(d == NULL));
+}
+
 PData print_data (PData d, FILE *stream)
 {
   if (is_symbol(d))
@@ -422,11 +448,13 @@ int is_lambda (PData expr)
 
 PData eval_expr (PData expr, PData env)
 {
+# ifdef LCI_DEBUG
   printf("{");
   print_data(expr, stdout);
   printf(", ");
   print_data(env, stdout);
   printf("}\n");
+# endif
   
   PData ret = NULL;
   
@@ -448,7 +476,7 @@ PData eval_expr (PData expr, PData env)
     else {
       PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
       PData new_expr = eval_expr(closure_body(cl), new_env);
-      del_pair(new_env);
+      /*del_pair(new_env);*/
       ret = new_expr;
     }
   }
@@ -457,6 +485,7 @@ PData eval_expr (PData expr, PData env)
     print_data(expr, stderr);
     ret = NULL;
   }
+# ifdef LCI_DEBUG
   printf("EVAL: ");
   print_data(expr, stdout);
   printf("\n env: ");
@@ -464,6 +493,7 @@ PData eval_expr (PData expr, PData env)
   printf("\n => ");
   print_data(ret, stdout);
   printf("\n\n");
+# endif
 
   return ret;
 }
