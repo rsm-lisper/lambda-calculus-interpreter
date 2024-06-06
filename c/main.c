@@ -50,6 +50,7 @@ PNode make_node (void *first, void *next)
   return node;
 }
 
+
 void del_node (PNode n)
 {
   free(n);
@@ -62,7 +63,8 @@ void del_node (PNode n)
 
 enum TDataTypes {
   D_SYMBOL,
-  D_PAIR
+  D_PAIR,
+  D_CLOSURE
 };
 
 typedef struct _tdata TData, *PData;
@@ -71,6 +73,7 @@ struct _tdata {
   union {
     char *symbol;
     PNode pair;
+    PNode closure;
   } data;
 };
 
@@ -196,6 +199,8 @@ void del_pair_tree (PData p)
   del_pair(p);
 }
 
+PData is_closure();
+PData print_closure();
 PData print_pair_tree (PData p, FILE *stream)
 {
   PData p0 = p;
@@ -208,14 +213,16 @@ PData print_pair_tree (PData p, FILE *stream)
   while (is_pair(p)) {
     if (i) fputc(' ', stream);
     else i = 1;
-
-    if (is_symbol(pfirst(p)))
-      print_symbol(pfirst(p), stream);
-    else {   /* pair */
-      if (pfirst(p) == NULL)
-        fputs("()", stream);
-      else
-        print_pair_tree(pfirst(p), stream);
+    PData curr = pfirst(p);
+    if (is_symbol(curr))
+      print_symbol(curr, stream);
+    else if (is_closure(curr))
+      print_closure(curr, stream);
+    else if (is_pair(curr))
+      print_pair_tree(curr, stream);
+    else {
+      assert(curr == NULL);
+      fputs("()", stream);
     }
     p = pnext(p);
   }
@@ -269,10 +276,75 @@ int read_pair_tree (PData *pread)
   return i;
 }
 
+/***   C L O S U R E   ***/
+PData is_closure (PData d)
+{
+  if (d && d->type == D_CLOSURE)
+    return d;
+  return NULL;
+}
+
+PData make_closure (PData lambda, PData env)
+{
+  PData cl = malloc(sizeof(TData));
+  assert(cl != NULL);
+  cl->type = D_CLOSURE;
+  cl->data.closure = make_node(lambda, env);
+  return cl;
+}
+
+void del_closure (PData cl)
+{
+  assert(is_closure(cl));
+  del_node(cl->data.closure);
+  free(cl);
+}
+
+PData closure_lambda (PData cl)
+{
+  assert(is_closure(cl));
+  return cl->data.closure->first;
+}
+
+PData closure_arg_name (PData cl)
+{
+  assert(is_closure(cl));
+  return pfirst(pfirst(pnext(closure_lambda(cl))));
+}
+
+PData closure_body (PData cl)
+{
+  assert(is_closure(cl));
+  return pfirst(pnext(pnext(closure_lambda(cl))));
+}
+
+PData closure_env (PData cl)
+{
+  assert(is_closure(cl));
+  return cl->data.closure->next;
+}
+
+PData print_data();
+PData print_closure (PData cl, FILE *stream)
+{
+  assert(is_closure(cl));
+  fprintf(stream, "#<closure %p (", cl);
+  print_symbol(closure_arg_name(cl), stream);
+  fputs(") ", stream);
+  print_data(closure_body(cl), stream);
+  fputs(" | ", stream);
+  print_data(closure_env(cl), stream);
+  fputs(">", stream);
+  return cl;
+}
+
+/***   D A T A   T O O L S   ***/
 PData print_data (PData d, FILE *stream)
 {
   if (is_symbol(d))
     print_symbol(d, stream);
+  else if (is_closure(d))
+    print_closure(d, stream);
   else if (is_pair(d))
     print_pair_tree(d, stream);
   else if (d == NULL)
@@ -280,8 +352,6 @@ PData print_data (PData d, FILE *stream)
   return d;
 }
 
-
-/***   L I S T S   ***/
 int list_length (PData list)
 {
   int len = 0;
@@ -352,6 +422,12 @@ int is_lambda (PData expr)
 
 PData eval_expr (PData expr, PData env)
 {
+  printf("{");
+  print_data(expr, stdout);
+  printf(", ");
+  print_data(env, stdout);
+  printf("}\n");
+  
   PData ret = NULL;
   
   if (is_symbol(expr)) {
@@ -359,19 +435,19 @@ PData eval_expr (PData expr, PData env)
     ret = kval ? pnext(kval) : expr;
   }
   else if (is_lambda(expr)) {
-    ret = expr;
+    ret = make_closure(expr, env);
   }
   else if (is_pair(expr) && list_length(expr) == 2) {
-    PData lambda = eval_expr(pfirst(expr), env);
+    PData cl = eval_expr(pfirst(expr), env);
     PData arg = eval_expr(pfirst(pnext(expr)), env);
-    if (!is_lambda(lambda)) {
-      fputs("ERROR! eval_expr(): expression is not a lambda:\n", stderr);
-      print_data(lambda, stderr);
+    if (!is_closure(cl)) {
+      fputs("ERROR! eval_expr(): expression is not a closure:\n", stderr);
+      print_data(cl, stderr);
       ret = NULL;
     }
     else {
-      PData new_env = assoc_add(env, pfirst(pfirst(pnext(lambda))), arg);
-      PData new_expr = eval_expr(pfirst(pnext(pnext(lambda))), new_env);
+      PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
+      PData new_expr = eval_expr(closure_body(cl), new_env);
       del_pair(new_env);
       ret = new_expr;
     }
@@ -387,7 +463,7 @@ PData eval_expr (PData expr, PData env)
   print_data(env, stdout);
   printf("\n => ");
   print_data(ret, stdout);
-  printf("\n");
+  printf("\n\n");
 
   return ret;
 }
@@ -407,8 +483,12 @@ void del_expr (PData expr)
 {
   if (is_symbol(expr))
     del_symbol(expr);
-  else
+  else if (is_closure(expr))
+    del_closure(expr);
+  else if (is_pair(expr))
     del_pair_tree(expr);
+  else
+    assert(expr == NULL);
 }
 
 int main ()
