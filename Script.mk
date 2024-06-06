@@ -20,7 +20,7 @@ check: $(TEST_RESULTS)
 %.res: %.lc
 	echo -n " - testing "$(ANSIBOLD)$(SCRIPT)$(ANSIRST)":" \
 		$(ANSIYELLOW)$(patsubst $(TESTDIR)%.lc,%,$?)$(ANSIRST)
-	$(INTERP) $(SCRIPT) <$? >$@ult
+	./$(SCRIPT) <$? >$@ult
 	diff --color=always --text $@ult $(patsubst %.lc,%.expect,$?)
 	echo $(ANSIGOK)
 
