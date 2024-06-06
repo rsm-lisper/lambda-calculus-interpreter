@@ -1,0 +1,7 @@
+;; -*- mode: scheme -*-
+
+((lambda (apply)
+   ((apply (lambda (x) x)) 1))
+ (lambda (func)
+   (lambda (arg)
+     (func arg))))

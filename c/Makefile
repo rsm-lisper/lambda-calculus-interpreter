@@ -1,7 +1,8 @@
 BINARY=lci
 
 CFILES=$(wildcard *.c)
-TESTDIR=../tests.lc/
+#TESTDIR=../tests.lc/
+TESTDIR=tests/
 TESTS=$(wildcard $(TESTDIR)*.lc)
 TEST_RESULTS=$(patsubst %.lc,%.res,$(TESTS))
 
@@ -31,7 +32,7 @@ check: $(TEST_RESULTS)
 	echo -n " - testing "$(ANSIBOLD)$(BINARY)$(ANSIRST)":" \
 		$(ANSIYELLOW)$(patsubst $(TESTDIR)%.lc,%,$?)$(ANSIRST)
 	./$(BINARY) <$? >$@ult
-	diff --color=always --text $@ult $(patsubst %.lc,%.lc-expect,$?)
+	diff --color=always --text $@ult $(patsubst %.lc,%.expect,$?)
 	echo $(ANSIGOK)
 
 clean:

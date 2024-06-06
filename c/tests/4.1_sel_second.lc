@@ -1,0 +1,7 @@
+;; -*- mode: scheme -*-
+
+((lambda (sel-second)
+   ((sel-second 1) 2))
+ (lambda (f)
+   (lambda (s)
+     s)))
