@@ -50,6 +50,27 @@ PNode make_node (void *first, void *next)
   return node;
 }
 
+void *nfirst (PNode node)
+{
+  assert(node != NULL);
+  return node->first;
+}
+void *nnext (PNode node)
+{
+  assert(node != NULL);
+  return node->next;
+}
+void *set_nfirst (PNode node, void *first)
+{
+  assert(node != NULL);
+  return node->first = first;
+}
+void *set_nnext (PNode node, void *next)
+{
+  assert(node != NULL);
+  return node->next = next;
+}
+
 
 /*********************************************/
 /***   D A T A   /   D A T A   T Y P E S   ***/
@@ -74,17 +95,17 @@ struct _tdata {
 
 /***   S Y M B O L   ***/
 
-PData is_symbol (PData d)
+PData is_symbol (PData data)
 {
-  if (d && d->type == D_SYMBOL)
-    return d;
+  if (data && data->type == D_SYMBOL)
+    return data;
   return NULL;
 }
 
-char *svalue (PData d)
+char *svalue (PData data)
 {
-  assert(is_symbol(d));
-  return d->data.symbol;
+  assert(is_symbol(data));
+  return data->data.symbol;
 }
 
 int sequal (PData sa, PData sb)
@@ -95,98 +116,98 @@ int sequal (PData sa, PData sb)
 
 PData make_symbol (char *str)
 {
-  PData s = malloc(sizeof(TData));
-  assert(s != NULL);
-  s->type = D_SYMBOL;
-  s->data.symbol = str;
-  return s;
+  PData symbol = malloc(sizeof(TData));
+  assert(symbol != NULL);
+  symbol->type = D_SYMBOL;
+  symbol->data.symbol = str;
+  return symbol;
 }
 
-PData print_symbol (PData s, FILE *stream)
+PData print_symbol (PData symbol, FILE *stream)
 {
-  assert(is_symbol(s));
-  fputs(s->data.symbol, stream);
-  return s;
+  assert(is_symbol(symbol));
+  fputs(symbol->data.symbol, stream);
+  return symbol;
 }
 
 # define MAXSYMBOL 256
 
 PData read_symbol (void)
 {
-  char s[MAXSYMBOL];
+  char str[MAXSYMBOL];
   int c, i = 0;
 
   while (i < MAXSYMBOL && (c = getchar()) != EOF &&
          strchr("()[]; \t\r\n", c) == NULL) {
-    s[i++] = c;
+    str[i++] = c;
   }
   if (i == MAXSYMBOL)
     i--;
   else
     ungetchar(c);
-  s[i] = '\0';
+  str[i] = '\0';
 
-  return make_symbol(strdup(s));
+  return make_symbol(strdup(str));
 }
 
 
 /***   P A I R   ***/
 
-PData is_pair (PData d)
+PData is_pair (PData data)
 {
-  if (d && d->type == D_PAIR)
-    return d;
+  if (data && data->type == D_PAIR)
+    return data;
   return NULL;
 }
 
 PData make_pair (PData first, PData next)
 {
-  PData p = malloc(sizeof(TData));
-  assert(p != NULL);
-  p->type = D_PAIR;
-  p->data.pair = make_node(first, next);
-  return p;
+  PData pair = malloc(sizeof(TData));
+  assert(pair != NULL);
+  pair->type = D_PAIR;
+  pair->data.pair = make_node(first, next);
+  return pair;
 }
 
-PData pfirst (PData p)
+PData pfirst (PData pair)
 {
-  assert(is_pair(p));
-  return p->data.pair->first;
+  assert(is_pair(pair));
+  return nfirst(pair->data.pair);
 }
 
-PData pnext (PData p)
+PData pnext (PData pair)
 {
-  assert(is_pair(p));
-  return p->data.pair->next;
+  assert(is_pair(pair));
+  return nnext(pair->data.pair);
 }
 
-PData set_pfirst (PData p, PData val)
+PData set_pfirst (PData pair, PData first)
 {
-  assert(is_pair(p));
-  return p->data.pair->first = val;
+  assert(is_pair(pair));
+  return set_nfirst(pair->data.pair, first);
 }
 
-PData set_pnext (PData p, PData val)
+PData set_pnext (PData pair, PData next)
 {
-  assert(is_pair(p));
-  return p->data.pair->next = val;
+  assert(is_pair(pair));
+  return set_nnext(pair->data.pair, next);
 }
 
 PData is_closure();
 PData print_closure();
-PData print_pair_tree (PData p, FILE *stream)
+PData print_pair_tree (PData pair, FILE *stream)
 {
-  PData p0 = p;
+  PData p0 = pair;
   int i = 0;
 
-  if (!is_pair(p))
-    return p;
+  if (!is_pair(pair))
+    return pair;
 
   fputc('(', stream);
-  while (is_pair(p)) {
+  while (is_pair(pair)) {
     if (i) fputc(' ', stream);
     else i = 1;
-    PData curr = pfirst(p);
+    PData curr = pfirst(pair);
     if (is_symbol(curr))
       print_symbol(curr, stream);
     else if (is_closure(curr))
@@ -197,14 +218,14 @@ PData print_pair_tree (PData p, FILE *stream)
       assert(curr == NULL);
       fputs("()", stream);
     }
-    p = pnext(p);
+    pair = pnext(pair);
   }
-  if (p && is_symbol(p)) {
+  if (pair && is_symbol(pair)) {
     if (i) fputc(' ', stream);
     else i = 1;
 
     fputs(". ", stream);
-    print_symbol(p, stream);
+    print_symbol(pair, stream);
   }
   fputc(')', stream);
   
@@ -213,7 +234,7 @@ PData print_pair_tree (PData p, FILE *stream)
 
 int read_pair_tree (PData *pread)
 {
-  PData p = *pread = NULL;
+  PData pair = *pread = NULL;
   int c, i = 0;
   
   eat_wspace_comment();
@@ -228,19 +249,17 @@ int read_pair_tree (PData *pread)
       if ((r = read_pair_tree(&sub_p)) < 0)
         return r;
       if (*pread == NULL)
-        *pread = p = make_pair(sub_p, NULL);
+        *pread = pair = make_pair(sub_p, NULL);
       else {
-        set_pnext(p, make_pair(sub_p, NULL));
-        p = pnext(p);
+        pair = set_pnext(pair, make_pair(sub_p, NULL));
       }
     }
     else {
       ungetchar(c);
       if (*pread == NULL)
-        *pread = p = make_pair(read_symbol(), NULL);
+        *pread = pair = make_pair(read_symbol(), NULL);
       else {
-        set_pnext(p, make_pair(read_symbol(), NULL));
-        p = pnext(p);
+        pair = set_pnext(pair, make_pair(read_symbol(), NULL));
       }
     }
     i++;
@@ -252,10 +271,10 @@ int read_pair_tree (PData *pread)
 
 /***   C L O S U R E   ***/
 
-PData is_closure (PData d)
+PData is_closure (PData data)
 {
-  if (d && d->type == D_CLOSURE)
-    return d;
+  if (data && data->type == D_CLOSURE)
+    return data;
   return NULL;
 }
 
@@ -271,7 +290,7 @@ PData make_closure (PData lambda, PData env)
 PData closure_lambda (PData cl)
 {
   assert(is_closure(cl));
-  return cl->data.closure->first;
+  return nfirst(cl->data.closure);
 }
 
 PData closure_arg_name (PData cl)
@@ -289,7 +308,7 @@ PData closure_body (PData cl)
 PData closure_env (PData cl)
 {
   assert(is_closure(cl));
-  return cl->data.closure->next;
+  return nnext(cl->data.closure);
 }
 
 PData print_data();
@@ -313,17 +332,17 @@ PData print_closure (PData cl, FILE *stream)
 
 /***   D A T A   T O O L S   ***/
 
-PData print_data (PData d, FILE *stream)
+PData print_data (PData data, FILE *stream)
 {
-  if (is_symbol(d))
-    print_symbol(d, stream);
-  else if (is_closure(d))
-    print_closure(d, stream);
-  else if (is_pair(d))
-    print_pair_tree(d, stream);
-  else if (d == NULL)
+  if (is_symbol(data))
+    print_symbol(data, stream);
+  else if (is_closure(data))
+    print_closure(data, stream);
+  else if (is_pair(data))
+    print_pair_tree(data, stream);
+  else if (data == NULL)
     fputs("()", stream);
-  return d;
+  return data;
 }
 
 int list_length (PData list)
@@ -386,22 +405,19 @@ PData read_expr (void)
 
 PData print_expr (PData expr)
 {
-  if (expr) {
-    print_data(expr, stdout);
-    fputc('\n', stdout);
-  }
-  else
-    puts("null");
+  print_data(expr, stdout);
+  fputc('\n', stdout);
   return expr;
 }
 
 
-int is_lambda (PData expr)
+PData is_lambda (PData expr)
 {
-  return
-    (is_pair(expr) && list_length(expr) == 3 &&
-     is_symbol(pfirst(expr)) &&
-     sequal(pfirst(expr), make_symbol("lambda")));
+  if (is_pair(expr) && list_length(expr) == 3 &&
+      is_symbol(pfirst(expr)) &&
+      sequal(pfirst(expr), make_symbol("lambda")))
+    return expr;
+  return NULL;
 }
 
 
