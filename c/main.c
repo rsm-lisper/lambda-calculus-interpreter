@@ -33,45 +33,6 @@ void eat_wspace_comment (void)
 }
 
 
-/***   N O D E   ***/
-
-typedef struct _tnode TNode, *PNode;
-struct _tnode {
-  void *first;
-  void *next;
-};
-
-PNode make_node (void *first, void *next)
-{
-  PNode node = malloc(sizeof(TNode));
-  assert(node != NULL);
-  node->first = first;
-  node->next = next;
-  return node;
-}
-
-void *nfirst (PNode node)
-{
-  assert(node != NULL);
-  return node->first;
-}
-void *nnext (PNode node)
-{
-  assert(node != NULL);
-  return node->next;
-}
-void *set_nfirst (PNode node, void *first)
-{
-  assert(node != NULL);
-  return node->first = first;
-}
-void *set_nnext (PNode node, void *next)
-{
-  assert(node != NULL);
-  return node->next = next;
-}
-
-
 /*********************************************/
 /***   D A T A   /   D A T A   T Y P E S   ***/
 /*********************************************/
@@ -87,8 +48,14 @@ struct _tdata {
   enum TDataTypes type;
   union {
     char *symbol;
-    PNode pair;
-    PNode closure;
+    struct {
+      PData first;
+      PData next;
+    } pair;
+    struct {
+      PData lambda;
+      PData env;
+    } closure;
   } data;
 };
 
@@ -165,32 +132,35 @@ PData make_pair (PData first, PData next)
   PData pair = malloc(sizeof(TData));
   assert(pair != NULL);
   pair->type = D_PAIR;
-  pair->data.pair = make_node(first, next);
+  pair->data.pair.first = first;
+  pair->data.pair.next = next;
   return pair;
 }
 
 PData pfirst (PData pair)
 {
   assert(is_pair(pair));
-  return nfirst(pair->data.pair);
+  return pair->data.pair.first;
 }
 
 PData pnext (PData pair)
 {
   assert(is_pair(pair));
-  return nnext(pair->data.pair);
+  return pair->data.pair.next;
 }
 
 PData set_pfirst (PData pair, PData first)
 {
   assert(is_pair(pair));
-  return set_nfirst(pair->data.pair, first);
+  pair->data.pair.first = first;
+  return first;
 }
 
 PData set_pnext (PData pair, PData next)
 {
   assert(is_pair(pair));
-  return set_nnext(pair->data.pair, next);
+  pair->data.pair.next = next;
+  return next;
 }
 
 PData is_closure();
@@ -283,14 +253,15 @@ PData make_closure (PData lambda, PData env)
   PData cl = malloc(sizeof(TData));
   assert(cl != NULL);
   cl->type = D_CLOSURE;
-  cl->data.closure = make_node(lambda, env);
+  cl->data.closure.lambda = lambda;
+  cl->data.closure.env = env;
   return cl;
 }
 
 PData closure_lambda (PData cl)
 {
   assert(is_closure(cl));
-  return nfirst(cl->data.closure);
+  return cl->data.closure.lambda;
 }
 
 PData closure_arg_name (PData cl)
@@ -308,17 +279,18 @@ PData closure_body (PData cl)
 PData closure_env (PData cl)
 {
   assert(is_closure(cl));
-  return nnext(cl->data.closure);
+  return cl->data.closure.env;
 }
+
 
 PData print_data();
 PData print_closure (PData cl, FILE *stream)
 {
   assert(is_closure(cl));
 # ifdef LCI_DEBUG
-  fprintf(stream, "#<closure %p (", cl);*/
+  fprintf(stream, "#<closure %p (", cl);
 # else
-  fputs("#<closure (", stream);
+  fprintf(stream, "#<closure (");
 # endif
   print_symbol(closure_arg_name(cl), stream);
   fputs(") ", stream);
@@ -340,8 +312,10 @@ PData print_data (PData data, FILE *stream)
     print_closure(data, stream);
   else if (is_pair(data))
     print_pair_tree(data, stream);
-  else if (data == NULL)
+  else {
+    assert(data == NULL);
     fputs("()", stream);
+  }
   return data;
 }
 
@@ -356,17 +330,17 @@ int list_length (PData list)
   return len;
 }
 
-PData assoc_add (PData assoc_list, PData key, PData value)
+PData assoc_add (PData alist, PData key, PData value)
 {
-  return make_pair(make_pair(key, value), assoc_list);
+  return make_pair(make_pair(key, value), alist);
 }
 
-PData assoc_lookup (PData assoc_list, PData key)
+PData assoc_lookup (PData alist, PData key)
 {
-  while (assoc_list) {
-    if (sequal(pfirst(pfirst(assoc_list)), key))
-      return pfirst(assoc_list);
-    assoc_list = pnext(assoc_list);
+  while (alist) {
+    if (sequal(pfirst(pfirst(alist)), key))
+      return pfirst(alist);
+    alist = pnext(alist);
   }
   return NULL;
 }
