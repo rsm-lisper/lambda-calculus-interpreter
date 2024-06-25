@@ -7,7 +7,6 @@
 /***   L O W   L E V E L   T O O L S   ***/
 /*****************************************/
 
-
 /***   C H A R   /   S T R I N G   ***/
 
 # define ungetchar(C) ungetc((C), stdin)
@@ -350,6 +349,27 @@ PData assoc_lookup (PData alist, PData key)
 /***   L A M B D A   C A L C U L U S   I N T E R P R E T E R  ***/
 /****************************************************************/
 
+PData eval_expr(PData, PData, unsigned int);
+PData deval_expr (PData expr, PData env, unsigned int parent_id)
+{
+  static unsigned int global_id = 0;
+  global_id++;
+  unsigned int id = global_id;
+  
+  PData ret = eval_expr(expr, env, id);
+
+  fprintf(stderr, "TRACE: ---[%d, parent: %d]---\n"
+         "TRACE: EVAL: ", id, parent_id);
+  print_data(expr, stderr);
+  fprintf(stderr, "\nTRACE: ENV: ");
+  print_data(env, stderr);
+  fprintf(stderr, "\nTRACE: RETURN: ");
+  print_data(ret, stderr);
+  fprintf(stderr, "\nTRACE: --/%d:%d/--\n\n", id, parent_id);
+  
+  return ret;
+}
+
 PData read_expr (void)
 {
   PData expr;
@@ -395,7 +415,7 @@ PData is_lambda (PData expr)
 }
 
 
-PData eval_expr (PData expr, PData env)
+PData eval_expr (PData expr, PData env, unsigned int eval_id)
 {
   if (expr == NULL)
     return NULL;
@@ -407,8 +427,8 @@ PData eval_expr (PData expr, PData env)
     return make_closure(expr, env);
   }
   if (is_pair(expr) && list_length(expr) == 2) {
-    PData cl = eval_expr(pfirst(expr), env);
-    PData arg = eval_expr(pfirst(pnext(expr)), env);
+    PData cl = deval_expr(pfirst(expr), env, eval_id);
+    PData arg = deval_expr(pfirst(pnext(expr)), env, eval_id);
     if (!is_closure(cl)) {
       fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
       print_data(cl, stderr);
@@ -416,7 +436,7 @@ PData eval_expr (PData expr, PData env)
       return NULL;
     }
     PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
-    PData new_expr = eval_expr(closure_body(cl), new_env);
+    PData new_expr = deval_expr(closure_body(cl), new_env, eval_id);
     return new_expr;
   }
 
@@ -429,6 +449,6 @@ PData eval_expr (PData expr, PData env)
 
 int main ()
 {
-  print_expr(eval_expr(read_expr(), NULL));
+  print_expr(deval_expr(read_expr(), NULL, 0));
   return 0;
 }

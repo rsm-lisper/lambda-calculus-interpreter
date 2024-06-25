@@ -6,7 +6,7 @@ TESTS=$(wildcard $(TESTDIR)*.lc)
 TEST_RESULTS=$(patsubst %.lc,%.res,$(TESTS))
 
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror -ggdb -std=c89
+CFLAGS=-Wall -Wextra -Werror -std=c89
 
 ANSIGREEN="\033[32m"
 ANSIYELLOW="\033[33m"
