@@ -286,17 +286,19 @@ PData print_data();
 PData print_closure (PData cl, FILE *stream)
 {
   assert(is_closure(cl));
-# ifdef LCI_DEBUG
+# ifdef TRACE
   fprintf(stream, "#<closure %p (", cl);
-# else
-  fprintf(stream, "#<closure (");
-# endif
   print_symbol(closure_arg_name(cl), stream);
   fputs(") ", stream);
   print_data(closure_body(cl), stream);
   fputs(" | ", stream);
   print_data(closure_env(cl), stream);
   fputs(">", stream);
+# else
+  fputs("#<closure (", stream);
+  print_symbol(closure_arg_name(cl), stream);
+  fputs(") >", stream);
+# endif
   return cl;
 }
 
@@ -349,27 +351,6 @@ PData assoc_lookup (PData alist, PData key)
 /***   L A M B D A   C A L C U L U S   I N T E R P R E T E R  ***/
 /****************************************************************/
 
-PData eval_expr(PData, PData, unsigned int);
-PData deval_expr (PData expr, PData env, unsigned int parent_id)
-{
-  static unsigned int global_id = 0;
-  global_id++;
-  unsigned int id = global_id;
-  
-  PData ret = eval_expr(expr, env, id);
-
-  fprintf(stderr, "TRACE: ---[%d, parent: %d]---\n"
-         "TRACE: EVAL: ", id, parent_id);
-  print_data(expr, stderr);
-  fprintf(stderr, "\nTRACE: ENV: ");
-  print_data(env, stderr);
-  fprintf(stderr, "\nTRACE: RETURN: ");
-  print_data(ret, stderr);
-  fprintf(stderr, "\nTRACE: --/%d:%d/--\n\n", id, parent_id);
-  
-  return ret;
-}
-
 PData read_expr (void)
 {
   PData expr;
@@ -415,40 +396,67 @@ PData is_lambda (PData expr)
 }
 
 
-PData eval_expr (PData expr, PData env, unsigned int eval_id)
+PData eval_expr (PData expr, PData env, unsigned int parent_id)
 {
-  if (expr == NULL)
-    return NULL;
-  if (is_symbol(expr)) {
+  PData ret;
+  static unsigned int global_id = 0;
+  global_id++;
+  unsigned int id = parent_id;
+  id = global_id;
+
+# ifdef TRACE
+  if (id == 1)
+    fprintf(stderr, "(\n");
+# endif
+  
+  if (expr == NULL) {
+    ret = NULL;
+  }
+  else if (is_symbol(expr)) {
     PData kval = assoc_lookup(env, expr);
-    return kval ? pnext(kval) : expr;
+    ret = kval ? pnext(kval) : expr;
   }
-  if (is_lambda(expr)) {
-    return make_closure(expr, env);
+  else if (is_lambda(expr)) {
+    ret = make_closure(expr, env);
   }
-  if (is_pair(expr) && list_length(expr) == 2) {
-    PData cl = deval_expr(pfirst(expr), env, eval_id);
-    PData arg = deval_expr(pfirst(pnext(expr)), env, eval_id);
+  else if (is_pair(expr) && list_length(expr) == 2) {
+    PData cl = eval_expr(pfirst(expr), env, id);
+    PData arg = eval_expr(pfirst(pnext(expr)), env, id);
     if (!is_closure(cl)) {
       fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
       print_data(cl, stderr);
       fputs("\n\n", stderr);
-      return NULL;
+      ret = NULL;
     }
     PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
-    PData new_expr = deval_expr(closure_body(cl), new_env, eval_id);
-    return new_expr;
+    PData new_expr = eval_expr(closure_body(cl), new_env, id);
+    ret = new_expr;
+  }
+  else {
+    fputs("ERROR! eval_expr(): unrecognised expression: ", stderr);
+    print_data(expr, stderr);
+    fputs("\n\n", stderr);
+    ret = NULL;
   }
 
-  fputs("ERROR! eval_expr(): unrecognised expression: ", stderr);
+# ifdef TRACE
+  fprintf(stderr, "((id . %d) (parent-id . %d) (expr ", id, parent_id);
   print_data(expr, stderr);
-  fputs("\n\n", stderr);
-  return NULL;
+  fprintf(stderr, ") (env ");
+  print_data(env, stderr);
+  fprintf(stderr, ") (return ");
+  print_data(ret, stderr);
+  fprintf(stderr, "))\n");
+  if (id == 1)
+    fprintf(stderr, ")\n");
+# endif
+
+  return ret;
 }
 
 
 int main ()
 {
-  print_expr(deval_expr(read_expr(), NULL, 0));
+  print_expr(eval_expr(read_expr(), NULL, 0));
   return 0;
 }
