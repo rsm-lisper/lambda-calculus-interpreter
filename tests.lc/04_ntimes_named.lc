@@ -1,0 +1,11 @@
+;; -*- mode: scheme -*-
+
+((lambda (<name>)
+   ((lambda (<new-name>)
+      ((lambda (<next-name>)
+         ((lambda (<last-name>)
+            <last-name>)
+          <next-name>))
+       <new-name>))
+    <name>))
+ (lambda (i) i))
