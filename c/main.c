@@ -52,7 +52,8 @@ struct _tdata {
       PData next;
     } pair;
     struct {
-      PData lambda;
+      PData arg_name;
+      PData body;
       PData env;
     } closure;
   } data;
@@ -238,7 +239,36 @@ int read_pair_tree (PData *pread)
 }
 
 
-/***   C L O S U R E   ***/
+/***   C L O S U R E   A N D   L A M B D A   ***/
+
+int is_list ();
+PData list_nth ();
+int list_length ();
+PData is_lambda (PData data)
+{
+  if (data && is_list(data) && list_length(data) == 3 &&
+      sequal(list_nth(data, 0), make_symbol("lambda")))
+    return data;
+  return NULL;
+}
+
+PData lambda_arg_name (PData lambda)
+{
+  assert(is_lambda(lambda));
+  PData arg = list_nth(lambda, 1);
+  assert(is_list(arg));
+  if (list_length(arg) == 1)
+    return list_nth(arg, 0);
+  return NULL;
+}
+
+PData lambda_body (PData lambda)
+{
+  assert(is_lambda(lambda));
+  if (list_length(lambda) == 3)
+    return list_nth(lambda, 2);
+  return NULL;
+}
 
 PData is_closure (PData data)
 {
@@ -249,30 +279,26 @@ PData is_closure (PData data)
 
 PData make_closure (PData lambda, PData env)
 {
+  assert(is_lambda(lambda));
   PData cl = malloc(sizeof(TData));
   assert(cl != NULL);
   cl->type = D_CLOSURE;
-  cl->data.closure.lambda = lambda;
+  cl->data.closure.arg_name = lambda_arg_name(lambda);
+  cl->data.closure.body = lambda_body(lambda);
   cl->data.closure.env = env;
   return cl;
-}
-
-PData closure_lambda (PData cl)
-{
-  assert(is_closure(cl));
-  return cl->data.closure.lambda;
 }
 
 PData closure_arg_name (PData cl)
 {
   assert(is_closure(cl));
-  return pfirst(pfirst(pnext(closure_lambda(cl))));
+  return cl->data.closure.arg_name;
 }
 
 PData closure_body (PData cl)
 {
   assert(is_closure(cl));
-  return pfirst(pnext(pnext(closure_lambda(cl))));
+  return cl->data.closure.body;
 }
 
 PData closure_env (PData cl)
@@ -286,24 +312,21 @@ PData print_data();
 PData print_closure (PData cl, FILE *stream)
 {
   assert(is_closure(cl));
-# ifdef TRACE
-  fprintf(stream, "#<closure %p (", cl);
-  print_symbol(closure_arg_name(cl), stream);
+  fputs("#<closure (", stream);
+  if (closure_arg_name(cl))
+    print_symbol(closure_arg_name(cl), stream);
   fputs(") ", stream);
   print_data(closure_body(cl), stream);
+# ifdef TRACE
   fputs(" | ", stream);
   print_data(closure_env(cl), stream);
-  fputs(">", stream);
-# else
-  fputs("#<closure (", stream);
-  print_symbol(closure_arg_name(cl), stream);
-  fputs(") >", stream);
 # endif
+  fputs(" >", stream);
   return cl;
 }
 
 
-/***   D A T A   T O O L S   ***/
+/***   L I S T S   A N D   D A T A   T O O L S   ***/
 
 PData print_data (PData data, FILE *stream)
 {
@@ -320,15 +343,35 @@ PData print_data (PData data, FILE *stream)
   return data;
 }
 
+int is_list (PData list)
+{
+  PData lt = list;
+  while (is_pair(lt))
+    lt = pnext(lt);
+  return lt == NULL;
+}
+
 int list_length (PData list)
 {
+  assert(is_list(list));
   int len = 0;
-  assert(is_pair(list));
-  while (list != NULL) {
+  while (list) {
     len++;
     list = pnext(list);
   }
   return len;
+}
+
+PData list_nth (PData list, unsigned int n)
+{
+  assert(is_list(list));
+  PData ret = list;
+  while (n--) {
+    assert(ret);
+    ret = pnext(ret);
+  }
+  assert(ret);
+  return pfirst(ret);
 }
 
 PData assoc_add (PData alist, PData key, PData value)
@@ -338,6 +381,8 @@ PData assoc_add (PData alist, PData key, PData value)
 
 PData assoc_lookup (PData alist, PData key)
 {
+  assert(is_list(alist));
+  assert(is_symbol(key));
   while (alist) {
     if (sequal(pfirst(pfirst(alist)), key))
       return pfirst(alist);
@@ -386,16 +431,6 @@ PData print_expr (PData expr)
 }
 
 
-PData is_lambda (PData expr)
-{
-  if (is_pair(expr) && list_length(expr) == 3 &&
-      is_symbol(pfirst(expr)) &&
-      sequal(pfirst(expr), make_symbol("lambda")))
-    return expr;
-  return NULL;
-}
-
-
 PData eval_expr (PData expr, PData env, unsigned int parent_id)
 {
   PData ret;
@@ -406,7 +441,7 @@ PData eval_expr (PData expr, PData env, unsigned int parent_id)
 
 # ifdef TRACE
   if (id == 1)
-    fprintf(stderr, "(\n");
+    fputs("(\n", stderr);
 # endif
   
   if (expr == NULL) {
@@ -419,18 +454,40 @@ PData eval_expr (PData expr, PData env, unsigned int parent_id)
   else if (is_lambda(expr)) {
     ret = make_closure(expr, env);
   }
-  else if (is_pair(expr) && list_length(expr) == 2) {
-    PData cl = eval_expr(pfirst(expr), env, id);
-    PData arg = eval_expr(pfirst(pnext(expr)), env, id);
-    if (!is_closure(cl)) {
-      fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
-      print_data(cl, stderr);
-      fputs("\n\n", stderr);
-      ret = NULL;
+  else if (is_list(expr) &&
+           (list_length(expr) == 2 || list_length(expr) == 1)) {
+    if (list_length(expr) == 1) {
+      PData last_cl = list_nth(expr, 0), cl = NULL;
+      while (is_symbol(cl = eval_expr(last_cl, env, id)) && cl != last_cl)
+        last_cl = cl;
+      if (!is_closure(cl)) {
+        fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
+        print_data(cl, stderr);
+        fputs("\n\n", stderr);
+        ret = NULL;
+      }
+      ret = eval_expr(closure_body(cl), env, id);
     }
-    PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
-    PData new_expr = eval_expr(closure_body(cl), new_env, id);
-    ret = new_expr;
+    else {
+      PData last_cl = list_nth(expr, 0), cl = NULL;
+      while (is_symbol(cl = eval_expr(last_cl, env, id)) &&
+             cl != last_cl) {
+        last_cl = cl;
+      }
+      PData last_arg = list_nth(expr, 1), arg = NULL;
+      while (is_symbol(arg = eval_expr(last_arg, env, id)) &&
+             arg != last_arg) {
+        last_arg = arg;
+      }
+      if (!is_closure(cl)) {
+        fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
+        print_data(cl, stderr);
+        fputs("\n\n", stderr);
+        ret = NULL;
+      }
+      PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
+      ret = eval_expr(closure_body(cl), new_env, id);
+    }
   }
   else {
     fputs("ERROR! eval_expr(): unrecognised expression: ", stderr);
@@ -442,13 +499,13 @@ PData eval_expr (PData expr, PData env, unsigned int parent_id)
 # ifdef TRACE
   fprintf(stderr, "((id . %d) (parent-id . %d) (expr ", id, parent_id);
   print_data(expr, stderr);
-  fprintf(stderr, ") (env ");
+  fputs(") (env ", stderr);
   print_data(env, stderr);
-  fprintf(stderr, ") (return ");
+  fputs(") (return ", stderr);
   print_data(ret, stderr);
-  fprintf(stderr, "))\n");
+  fputs("))\n", stderr);
   if (id == 1)
-    fprintf(stderr, ")\n");
+    fputs(")\n", stderr);
 # endif
 
   return ret;
