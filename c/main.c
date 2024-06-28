@@ -55,6 +55,7 @@ struct _tdata {
       PData arg_name;
       PData body;
       PData env;
+      PData first_name;
     } closure;
   } data;
 };
@@ -247,7 +248,10 @@ int list_length ();
 PData is_lambda (PData data)
 {
   if (data && is_list(data) && list_length(data) == 3 &&
-      sequal(list_nth(data, 0), make_symbol("lambda")))
+      sequal(list_nth(data, 0), make_symbol("lambda")) &&
+      is_list(list_nth(data, 1)) &&
+      (list_length(list_nth(data, 1)) == 1 ||
+       list_length(list_nth(data, 1)) == 0))
     return data;
   return NULL;
 }
@@ -277,16 +281,31 @@ PData is_closure (PData data)
   return NULL;
 }
 
-PData make_closure (PData lambda, PData env)
+PData make_closure (PData lambda, PData env, PData first_name)
 {
   assert(is_lambda(lambda));
   PData cl = malloc(sizeof(TData));
-  assert(cl != NULL);
+  assert(cl);
   cl->type = D_CLOSURE;
   cl->data.closure.arg_name = lambda_arg_name(lambda);
   cl->data.closure.body = lambda_body(lambda);
   cl->data.closure.env = env;
+  cl->data.closure.first_name = first_name;
   return cl;
+}
+
+PData set_closure_first_name (PData cl, PData first_name)
+{
+  assert(is_closure(cl));
+  assert(is_symbol(first_name));
+  cl->data.closure.first_name = first_name;
+  return cl;
+}
+
+PData closure_first_name (PData cl)
+{
+  assert(is_closure(cl));
+  return cl->data.closure.first_name;
 }
 
 PData closure_arg_name (PData cl)
@@ -312,7 +331,12 @@ PData print_data();
 PData print_closure (PData cl, FILE *stream)
 {
   assert(is_closure(cl));
-  fputs("#<closure (", stream);
+  fputs("#<closure ", stream);
+  if (closure_first_name(cl)) {
+    print_symbol(closure_first_name(cl), stream);
+    fputc(' ', stream);
+  }
+  fputs("(", stream);
   if (closure_arg_name(cl))
     print_symbol(closure_arg_name(cl), stream);
   fputs(") ", stream);
@@ -449,10 +473,17 @@ PData eval_expr (PData expr, PData env, unsigned int parent_id)
   }
   else if (is_symbol(expr)) {
     PData kval = assoc_lookup(env, expr);
-    ret = kval ? pnext(kval) : expr;
+    if (!kval)
+      ret = expr;
+    else {
+      if (is_closure(pnext(kval)) &&
+          closure_first_name(pnext(kval)) == NULL)
+        set_closure_first_name(pnext(kval), expr);
+      ret = pnext(kval);
+    }
   }
   else if (is_lambda(expr)) {
-    ret = make_closure(expr, env);
+    ret = make_closure(expr, env, NULL);
   }
   else if (is_list(expr) &&
            (list_length(expr) == 2 || list_length(expr) == 1)) {
