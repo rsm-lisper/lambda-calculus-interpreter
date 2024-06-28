@@ -247,7 +247,10 @@ int list_length ();
 PData is_lambda (PData data)
 {
   if (data && is_list(data) && list_length(data) == 3 &&
-      sequal(list_nth(data, 0), make_symbol("lambda")))
+      sequal(list_nth(data, 0), make_symbol("lambda")) &&
+      is_list(list_nth(data, 1)) &&
+      (list_length(list_nth(data, 1)) == 1 ||
+       list_length(list_nth(data, 1)) == 0))
     return data;
   return NULL;
 }
