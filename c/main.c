@@ -55,7 +55,6 @@ struct _tdata {
       PData arg_name;
       PData body;
       PData env;
-      PData first_name;
     } closure;
   } data;
 };
@@ -194,9 +193,14 @@ PData print_pair_tree (PData pair, FILE *stream)
   if (pair && is_symbol(pair)) {
     if (i) fputc(' ', stream);
     else i = 1;
-
     fputs(". ", stream);
     print_symbol(pair, stream);
+  }
+  else if (pair && is_closure(pair)) {
+    if (i) fputc(' ', stream);
+    else i = 1;
+    fputs(". ", stream);
+    print_closure(pair, stream);
   }
   fputc(')', stream);
   
@@ -281,7 +285,7 @@ PData is_closure (PData data)
   return NULL;
 }
 
-PData make_closure (PData lambda, PData env, PData first_name)
+PData make_closure (PData lambda, PData env)
 {
   assert(is_lambda(lambda));
   PData cl = malloc(sizeof(TData));
@@ -290,22 +294,7 @@ PData make_closure (PData lambda, PData env, PData first_name)
   cl->data.closure.arg_name = lambda_arg_name(lambda);
   cl->data.closure.body = lambda_body(lambda);
   cl->data.closure.env = env;
-  cl->data.closure.first_name = first_name;
   return cl;
-}
-
-PData set_closure_first_name (PData cl, PData first_name)
-{
-  assert(is_closure(cl));
-  assert(is_symbol(first_name));
-  cl->data.closure.first_name = first_name;
-  return cl;
-}
-
-PData closure_first_name (PData cl)
-{
-  assert(is_closure(cl));
-  return cl->data.closure.first_name;
 }
 
 PData closure_arg_name (PData cl)
@@ -331,12 +320,7 @@ PData print_data();
 PData print_closure (PData cl, FILE *stream)
 {
   assert(is_closure(cl));
-  fputs("#<closure ", stream);
-  if (closure_first_name(cl)) {
-    print_symbol(closure_first_name(cl), stream);
-    fputc(' ', stream);
-  }
-  fputs("(", stream);
+  fputs("#<closure (", stream);
   if (closure_arg_name(cl))
     print_symbol(closure_arg_name(cl), stream);
   fputs(") ", stream);
@@ -473,52 +457,31 @@ PData eval_expr (PData expr, PData env, unsigned int parent_id)
   }
   else if (is_symbol(expr)) {
     PData kval = assoc_lookup(env, expr);
-    if (!kval)
-      ret = expr;
-    else {
-      if (is_closure(pnext(kval)) &&
-          closure_first_name(pnext(kval)) == NULL)
-        set_closure_first_name(pnext(kval), expr);
-      ret = pnext(kval);
-    }
+    ret = kval ? pnext(kval) : expr;
   }
   else if (is_lambda(expr)) {
-    ret = make_closure(expr, env, NULL);
+    ret = make_closure(expr, env);
   }
-  else if (is_list(expr) &&
-           (list_length(expr) == 2 || list_length(expr) == 1)) {
+  else if (is_list(expr) && (list_length(expr) == 2 || list_length(expr) == 1)) {
+    PData last_cl = list_nth(expr, 0), cl = NULL, new_env;
+    while (is_symbol(cl = eval_expr(last_cl, env, id)) && cl != last_cl)
+      last_cl = cl;
+    if (!is_closure(cl)) {
+      fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
+      print_data(cl, stderr);
+      fputs("\n\n", stderr);
+      return NULL;
+    }
     if (list_length(expr) == 1) {
-      PData last_cl = list_nth(expr, 0), cl = NULL;
-      while (is_symbol(cl = eval_expr(last_cl, env, id)) && cl != last_cl)
-        last_cl = cl;
-      if (!is_closure(cl)) {
-        fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
-        print_data(cl, stderr);
-        fputs("\n\n", stderr);
-        ret = NULL;
-      }
-      ret = eval_expr(closure_body(cl), env, id);
+      new_env = env;
     }
     else {
-      PData last_cl = list_nth(expr, 0), cl = NULL;
-      while (is_symbol(cl = eval_expr(last_cl, env, id)) &&
-             cl != last_cl) {
-        last_cl = cl;
-      }
       PData last_arg = list_nth(expr, 1), arg = NULL;
-      while (is_symbol(arg = eval_expr(last_arg, env, id)) &&
-             arg != last_arg) {
+      while (is_symbol(arg = eval_expr(last_arg, env, id)) && arg != last_arg)
         last_arg = arg;
-      }
-      if (!is_closure(cl)) {
-        fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
-        print_data(cl, stderr);
-        fputs("\n\n", stderr);
-        ret = NULL;
-      }
-      PData new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
-      ret = eval_expr(closure_body(cl), new_env, id);
+      new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
     }
+    ret = eval_expr(closure_body(cl), new_env, id);
   }
   else {
     fputs("ERROR! eval_expr(): unrecognised expression: ", stderr);
