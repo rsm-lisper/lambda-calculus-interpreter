@@ -5,6 +5,8 @@
 /***   L O W   L E V E L   T O O L S   ***/
 /*****************************************/
 
+$NULL = NULL;
+$FALSE = FALSE;
 
 /***   C H A R   /   S T R I N G   ***/
 
@@ -39,46 +41,6 @@ function eat_wspace_comment ()
 }
 
 
-/***   N O D E   ***/
-
-function &make_node (&$first, &$next)
-{
-    $r = array('first' => $first, 'next' => $next);
-    return $r;
-}
-
-function &is_node (&$node)
-{
-    if (is_array($node) &&
-        array_key_exists('first', $node) &&
-        array_key_exists('next', $node))
-        return $node;
-    return FALSE;
-}
-function &nfirst (&$node)
-{
-    assert(is_node($node));
-    return $node['first'];
-}
-function &nnext (&$node)
-{
-    assert(is_node($node));
-    return $node['next'];
-}
-function &set_nfirst (&$node, &$value)
-{
-    assert(is_node($node));
-    $node['first'] = &$value;
-    return $node;
-}
-function &set_nnext (&$node, &$value)
-{
-    assert(is_node($node));
-    $node['next'] = &$value;
-    return $node;
-}
-
-
 /*********************************************/
 /***   D A T A   /   D A T A   T Y P E S   ***/
 /*********************************************/
@@ -89,24 +51,21 @@ define ("D_CLOSURE", 2);
 
 /***   S Y M B O L   ***/
 
-function &is_symbol (&$d)
+function &is_symbol (&$data)
 {
-    if (is_array($d) &&
-        array_key_exists('type', $d) &&
-        array_key_exists('symbol', $d) &&
-        $d['type'] === D_SYMBOL) {
-        return $d;
+    if (is_array($data) &&
+        array_key_exists('type', $data) &&
+        array_key_exists('symbol', $data) &&
+        $data['type'] === D_SYMBOL) {
+        return $data;
     }
-    else {
-        $f = FALSE;
-        return $f;
-    }
+    return $FALSE;
 }
 
-function &svalue (&$d)
+function &svalue (&$symbol)
 {
-    assert(is_symbol($d));
-    return $d['symbol'];
+    assert(is_symbol($symbol));
+    return $symbol['symbol'];
 }
 
 function sequal (&$sa, &$sb)
@@ -117,88 +76,95 @@ function sequal (&$sa, &$sb)
 
 function &make_symbol ($str)
 {
-    $r = array('type' => D_SYMBOL, 'symbol' => $str);
+    $r = array(
+        'type' => D_SYMBOL,
+        'symbol' => $str
+    );
     return $r;
 }
 
-function &print_symbol (&$s, $stream)
+function &print_symbol (&$symbol, $stream)
 {
-    assert(is_symbol($s));
-    fwrite($stream, $s['symbol']);
-    return $s;
+    assert(is_symbol($symbol));
+    fwrite($stream, $symbol['symbol']);
+    return $symbol;
 }
 
 function &read_symbol ()
 {
-    $s = "";
+    $str = "";
     while (($c = getchar()) !== FALSE &&
            strchr("()[]; \t\r\n", $c) === FALSE) {
-        $s .= $c;
+        $str .= $c;
     }
     ungetchar($c);
-    return make_symbol($s);
+    return make_symbol($str);
 }
 
 
 /***   P A I R   ***/
 
-function &is_pair (&$d)
+function &is_pair (&$data)
 {
-    if (is_array($d) && array_key_exists('type', $d) &&
-        array_key_exists('pair', $d) && $d['type'] === D_PAIR) {
-        return $d;
+    if (is_array($data) &&
+        array_key_exists('type', $data) &&
+        array_key_exists('first', $data) &&
+        array_key_exists('next', $data) &&
+        $data['type'] === D_PAIR) {
+        return $data;
     }
-    else {
-        $f = FALSE;
-        return $f;
-    }
+    return $FALSE;
 }
 
 function &make_pair (&$first, &$next)
 {
-    $r = array('type' => D_PAIR, 'pair' => make_node($first, $next));
-    return $r;
+    $pair = array(
+        'type' => D_PAIR,
+        'first' => $first,
+        'next' => $next
+    );
+    return $pair;
 }
 
-function &pfirst (&$p)
+function &pfirst (&$pair)
 {
-    assert(is_pair($p));
-    return nfirst($p['pair']);
+    assert(is_pair($pair));
+    return $pair['first'];
 }
 
-function &pnext (&$p)
+function &pnext (&$pair)
 {
-    assert(is_pair($p));
-    return nnext($p['pair']);
+    assert(is_pair($pair));
+    return $pair['next'];
 }
 
-function &set_pfirst (&$p, &$val)
+function &set_pfirst (&$pair, &$first)
 {
-    assert(is_pair($p));
-    set_nfirst($p['pair'], $val);
-    return $p;
+    assert(is_pair($pair));
+    $pair['first'] = &$first;
+    return $first;
 }
 
-function &set_pnext (&$p, &$val)
+function &set_pnext (&$pair, &$next)
 {
-    assert(is_pair($p));
-    set_nnext($p['pair'], $val);
-    return $p;
+    assert(is_pair($pair));
+    $pair['next'] = &$next;
+    return $next;
 }
 
-function &print_pair_tree (&$p, $stream)
+function &print_pair_tree (&$pair, $stream)
 {
-    $p0 = &$p;
+    $p0 = &$pair;
     $i = 0;
 
-    if (!is_pair($p))
-        return $p;
+    if (!is_pair($pair))
+        return $pair;
 
     fwrite($stream, '(');
-    while (is_pair($p)) {
+    while (is_pair($pair)) {
         if ($i) fwrite($stream, ' ');
         else $i = 1;
-        $curr = &pfirst($p);
+        $curr = &pfirst($pair);
         if (is_symbol($curr))
             print_symbol($curr, $stream);
         else if (is_closure($curr))
@@ -209,14 +175,19 @@ function &print_pair_tree (&$p, $stream)
             assert($curr === NULL);
             fwrite($stream, "()");
         }
-        $p = &pnext($p);
+        $pair = &pnext($pair);
     }
-    if (is_symbol($p)) {
+    if (is_symbol($pair)) {
         if ($i) fwrite($stream, ' ');
         else $i = 1;
-
         fwrite($stream, ". ");
-        print_symbol($p, $stream);
+        print_symbol($pair, $stream);
+    }
+    elseif (is_closure($pair)) {
+        if ($i) fwrite($stream, ' ');
+        else $i = 1;
+        fwrite($stream, ". ");
+        print_closure($pair, $stream);
     }
     fwrite($stream, ')');
   
@@ -231,7 +202,8 @@ function &read_pair_tree ()
     while (($c = getchar()) !== ')' && $c !== ']') {
         if ($c === FALSE) {
             fwrite(STDERR, "ERROR! read_pair_tree(): missing closing paren\n");
-            return $r = -1;
+            $r = -1;
+            return $r;
         }
         if ($c === '(' || $c === '[') {
             $sub_p = &read_pair_tree();
@@ -265,104 +237,160 @@ function &read_pair_tree ()
 }
 
 
-/***   C L O S U R E   ***/
+/***   C L O S U R E   A N D   L A M B D A   ***/
 
-function &is_closure (&$d)
+function &is_lambda (&$data)
 {
-    if (is_array($d) && array_key_exists('type', $d) &&
-        array_key_exists('closure', $d) && $d['type'] === D_CLOSURE) {
-        return $d;
+    if (is_list($data) && list_length($data) == 3 &&
+        sequal(list_nth($data, 0), make_symbol('lambda')) &&
+        is_list(list_nth($data, 1)) &&
+        (list_length(list_nth($data, 1)) == 1 ||
+         list_length(list_nth($data, 1)) == 0)) {
+        return $data;
     }
-    else {
-        $f = FALSE;
-        return $f;
+    return $FALSE;
+}
+
+function &lambda_arg_name (&$lambda)
+{
+    assert(is_lambda($lambda));
+    $arg = list_nth($lambda, 1);
+    assert(is_list($arg));
+    if (list_length($arg) == 1)
+        return list_nth($arg, 0);
+    return $FALSE;
+}
+
+function &lambda_body (&$lambda)
+{
+    assert(is_lambda($lambda));
+    if (list_length($lambda) == 3)
+        return list_nth($lambda, 2);
+    return $FALSE;
+}
+
+function &is_closure (&$data)
+{
+    if (is_array($data) &&
+        array_key_exists('type', $data) &&
+        array_key_exists('arg_name', $data) &&
+        array_key_exists('body', $data) &&
+        array_key_exists('env', $data) &&
+        $data['type'] === D_CLOSURE) {
+
+        return $data;
     }
+    return $FALSE;
 }
 
 function &make_closure (&$lambda, &$env)
 {
-    $r = array('type' => D_CLOSURE, 'closure' => make_node($lambda, $env));
-    return $r;
-}
-
-function &closure_lambda (&$cl)
-{
-    assert(is_closure($cl));
-    return nfirst($cl['closure']);
+    $cl = array(
+        'type' => D_CLOSURE,
+        'arg_name' => lambda_arg_name($lambda),
+        'body' => lambda_body($lambda),
+        'env' => $env
+    );
+    return $cl;
 }
 
 function &closure_arg_name (&$cl)
 {
     assert(is_closure($cl));
-    return pfirst(pfirst(pnext(closure_lambda($cl))));
+    return $cl['arg_name'];
 }
 
 function &closure_body (&$cl)
 {
     assert(is_closure($cl));
-    return pfirst(pnext(pnext(closure_lambda($cl))));
+    return $cl['body'];
 }
 
 function &closure_env (&$cl)
 {
     assert(is_closure($cl));
-    return nnext($cl['closure']);
+    return $cl['env'];
 }
 
 function &print_closure (&$cl, $stream)
 {
     assert(is_closure($cl));
     fwrite($stream, "#<closure (");
-    print_symbol(closure_arg_name($cl), $stream);
+    if (closure_arg_name($cl))
+        print_symbol(closure_arg_name($cl), $stream);
     fwrite($stream, ") ");
     print_data(closure_body($cl), $stream);
+    /*
     fwrite($stream, " | ");
     print_data(closure_env($cl), $stream);
-    fwrite($stream, ">");
+    */
+    fwrite($stream, " >");
     return $cl;
 }
 
 
-/***   D A T A   T O O L S   ***/
+/***   L I S T   A N D   D A T A   T O O L S   ***/
 
-function &print_data (&$d, $stream)
+function &print_data (&$data, $stream)
 {
-    if (is_symbol($d))
-        print_symbol($d, $stream);
-    else if (is_closure($d))
-        print_closure($d, $stream);
-    else if (is_pair($d))
-        print_pair_tree($d, $stream);
-    else if ($d === NULL)
+    if (is_symbol($data))
+        print_symbol($data, $stream);
+    else if (is_closure($data))
+        print_closure($data, $stream);
+    else if (is_pair($data))
+        print_pair_tree($data, $stream);
+    else {
+        assert($data === NULL);
         fwrite($stream, "()");
-    return $d;
+    }
+    return $data;
+}
+
+function is_list (&$data)
+{
+    while (is_pair($data))
+        $data = &pnext($data);
+    return $data === NULL;
 }
 
 function list_length (&$list)
 {
+    assert(is_list($list));
     $len = 0;
-    assert(is_pair($list));
-    while ($list != NULL) {
+    while ($list !== NULL) {
         $len++;
         $list = &pnext($list);
     }
     return $len;
 }
 
-function &assoc_add (&$assoc_list, &$key, &$value)
+function &list_nth (&$list, $n)
 {
-    return make_pair(make_pair($key, $value), $assoc_list);
+    assert(is_list($list));
+    $ret = &$list;
+    while ($n--) {
+        assert($ret !== NULL);
+        $ret = &pnext($ret);
+    }
+    assert($ret);
+    return pfirst($ret);
 }
 
-function &assoc_lookup (&$assoc_list, &$key)
+function &assoc_add (&$alist, &$key, &$value)
 {
-    while ($assoc_list) {
-        if (sequal(pfirst(pfirst($assoc_list)), $key))
-            return pfirst($assoc_list);
-        $assoc_list = &pnext($assoc_list);
+    return make_pair(make_pair($key, $value), $alist);
+}
+
+function &assoc_lookup (&$alist, &$key)
+{
+    assert(is_list($alist));
+    assert(is_symbol($key));
+    while ($alist !== NULL) {
+        if (sequal(pfirst(pfirst($alist)), $key))
+            return pfirst($alist);
+        $alist = &pnext($alist);
     }
-    $f = FALSE;
-    return $f;
+    return $FALSE;
 }
 
 
@@ -375,7 +403,7 @@ function &read_expr ()
     eat_wspace_comment();
     $c = getchar();
     if ($c === FALSE)
-        return NULL;
+        return $NULL;
     if ($c === ')' || $c === ']') {
         fwrite(STDERR, "ERROR! read_expr(): too many parens\n");
         return $NULL;
@@ -392,69 +420,80 @@ function &read_expr ()
 
 function &print_expr (&$expr)
 {
-    if ($expr !== NULL)
-        print_data($expr, STDOUT);
-    else
-        print ("null");
+    print_data($expr, STDOUT);
     printf("\n");
     return $expr;
 }
 
 
-function &is_lambda (&$expr)
-{
-    if (is_pair($expr) && list_length($expr) == 3 &&
-        is_symbol(pfirst($expr)) &&
-        sequal(pfirst($expr), make_symbol('lambda'))) {
-        return $expr;
-    }
-    else {
-        $f = FALSE;
-        return $f;
-    }
-}
-
-
 function &eval_expr (&$expr, &$env)
 {
-    if ($expr === NULL)
-        return NULL;
-    if (is_symbol($expr)) {
+    $ret = NULL;
+    $case = '(unknown)';
+    
+    if ($expr === NULL) {
+        $ret = NULL;
+        $case = 'null';
+    }
+    else if (is_symbol($expr)) {
         $kval = &assoc_lookup($env, $expr);
-        if ($kval !== FALSE)
-            $r = &pnext($kval);
+        $case = 'env-lookup';
+        if ($kval)
+            $ret = &pnext($kval);
         else
-            $r = &$expr;
-        return $r;
+            $ret = &$expr;
     }
-    if (is_lambda($expr)) {
-        return make_closure($expr, $env);
+    else if (is_lambda($expr)) {
+        $ret = &make_closure($expr, $env);
+        $case = 'lambda';
     }
-    if (is_pair($expr) && list_length($expr) == 2) {
-        $cl = &eval_expr(pfirst($expr), $env);
-        $arg = &eval_expr(pfirst(pnext($expr)), $env);
+    else if (is_list($expr) && (list_length($expr) == 2 || list_length($expr) == 3)) {
+        $last_cl = &list_nth($expr, 0);
+        $cl = NULL;
+        while (is_symbol($cl = &eval_expr($last_cl, $env)) && cl != $last_cl)
+            $last_cl = &$cl;
         if (!is_closure($cl)) {
             fwrite(STDERR, "ERROR! eval_expr(): expression is not a closure: ");
             print_data($cl, STDERR);
             fwrite(STDERR, "\n\n");
-            return NULL;
+            return $NULL;
         }
-        $new_env = &assoc_add(closure_env($cl), closure_arg_name($cl), $arg);
-        $new_expr = &eval_expr(closure_body($cl), $new_env);
-        return $new_expr;
+        if (list_length($expr) == 1)
+            $new_env = &$env;
+        else {
+            $last_arg = &list_nth($expr, 1);
+            $arg = NULL;
+            while (is_symbol($arg = &eval_expr($last_arg, $env)) && $arg != $last_arg)
+                $last_arg = &$arg;
+            $new_env = &assoc_add(closure_env($cl), closure_arg_name($cl), $arg);
+        }
+        $ret = &eval_expr(closure_body($cl), $new_env);
+        $case = 'application';
     }
-
-    fwrite(STDERR, "ERROR! eval_expr(): unrecognised expression: ");
+    else {
+        fwrite(STDERR, "ERROR! eval_expr(): unrecognised expression: ");
+        print_data($expr, STDERR);
+        fwrite(STDERR, "\n\n");
+        return $NULL;
+    }
+    /*
+    fwrite(STDERR, "EXPR: ");
     print_data($expr, STDERR);
+    fwrite(STDERR, "\nENV: ");
+    print_data($env, STDERR);
+    fwrite(STDERR, "\nCASE: ");
+    fwrite(STDERR, $case);
+    fwrite(STDERR, "\nRET: ");
+    print_data($ret, STDERR);
     fwrite(STDERR, "\n\n");
-    return NULL;
+    */
+    return $ret;
 }
 
 
 function main ()
 {
     print_expr(eval_expr(read_expr(), $NULL));
-    return 0;
 }
 
 main();
