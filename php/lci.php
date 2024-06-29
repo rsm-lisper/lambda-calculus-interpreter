@@ -320,10 +320,6 @@ function &print_closure (&$cl, $stream)
         print_symbol(closure_arg_name($cl), $stream);
     fwrite($stream, ") ");
     print_data(closure_body($cl), $stream);
-    /*
-    fwrite($stream, " | ");
-    print_data(closure_env($cl), $stream);
-    */
     fwrite($stream, " >");
     return $cl;
 }

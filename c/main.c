@@ -69,10 +69,10 @@ PData is_symbol (PData data)
   return NULL;
 }
 
-char *svalue (PData data)
+char *svalue (PData symbol)
 {
-  assert(is_symbol(data));
-  return data->data.symbol;
+  assert(is_symbol(symbol));
+  return symbol->data.symbol;
 }
 
 int sequal (PData sa, PData sb)
@@ -351,12 +351,11 @@ PData print_data (PData data, FILE *stream)
   return data;
 }
 
-int is_list (PData list)
+int is_list (PData data)
 {
-  PData lt = list;
-  while (is_pair(lt))
-    lt = pnext(lt);
-  return lt == NULL;
+  while (is_pair(data))
+    data = pnext(data);
+  return data == NULL;
 }
 
 int list_length (PData list)
@@ -439,18 +438,9 @@ PData print_expr (PData expr)
 }
 
 
-PData eval_expr (PData expr, PData env, unsigned int parent_id)
+PData eval_expr (PData expr, PData env)
 {
   PData ret;
-  static unsigned int global_id = 0;
-  global_id++;
-  unsigned int id = parent_id;
-  id = global_id;
-
-# ifdef TRACE
-  if (id == 1)
-    fputs("(\n", stderr);
-# endif
   
   if (expr == NULL) {
     ret = NULL;
@@ -464,7 +454,7 @@ PData eval_expr (PData expr, PData env, unsigned int parent_id)
   }
   else if (is_list(expr) && (list_length(expr) == 2 || list_length(expr) == 1)) {
     PData last_cl = list_nth(expr, 0), cl = NULL, new_env;
-    while (is_symbol(cl = eval_expr(last_cl, env, id)) && cl != last_cl)
+    while (is_symbol(cl = eval_expr(last_cl, env)) && cl != last_cl)
       last_cl = cl;
     if (!is_closure(cl)) {
       fputs("ERROR! eval_expr(): expression is not a closure: ", stderr);
@@ -477,11 +467,11 @@ PData eval_expr (PData expr, PData env, unsigned int parent_id)
     }
     else {
       PData last_arg = list_nth(expr, 1), arg = NULL;
-      while (is_symbol(arg = eval_expr(last_arg, env, id)) && arg != last_arg)
+      while (is_symbol(arg = eval_expr(last_arg, env)) && arg != last_arg)
         last_arg = arg;
       new_env = assoc_add(closure_env(cl), closure_arg_name(cl), arg);
     }
-    ret = eval_expr(closure_body(cl), new_env, id);
+    ret = eval_expr(closure_body(cl), new_env);
   }
   else {
     fputs("ERROR! eval_expr(): unrecognised expression: ", stderr);
@@ -489,25 +479,21 @@ PData eval_expr (PData expr, PData env, unsigned int parent_id)
     fputs("\n\n", stderr);
     ret = NULL;
   }
-
-# ifdef TRACE
-  fprintf(stderr, "((id . %d) (parent-id . %d) (expr ", id, parent_id);
+  /*
+  fputs("EXPR: ", stderr);
   print_data(expr, stderr);
-  fputs(") (env ", stderr);
+  fputs("\nENV: ", stderr);
   print_data(env, stderr);
-  fputs(") (return ", stderr);
+  fputs("\nRET: ", stderr);
   print_data(ret, stderr);
-  fputs("))\n", stderr);
-  if (id == 1)
-    fputs(")\n", stderr);
-# endif
-
+  fputs("\n\n", stderr);
+  */
   return ret;
 }
 
 
 int main ()
 {
-  print_expr(eval_expr(read_expr(), NULL, 0));
+  print_expr(eval_expr(read_expr(), NULL));
   return 0;
 }
