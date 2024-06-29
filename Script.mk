@@ -20,11 +20,13 @@ check: $(TEST_RESULTS)
 %.res: %.lc
 	echo -n " - testing "$(ANSIBOLD)$(SCRIPT)$(ANSIRST)":" \
 		$(ANSIYELLOW)$(patsubst $(TESTDIR)%.lc,%,$?)$(ANSIRST)
-	./$(SCRIPT) <$? >$@ult
+	./$(SCRIPT) <$? >$@ult 2>$@ult_err
 	diff --color=always --text $@ult $(patsubst %.lc,%.expect,$?)
+	diff --color=always --text $@ult_err $(patsubst %.lc,%.expect_err,$?)
 	echo $(ANSIGOK)
 
 clean:
 	echo -n "** Cleaning "$(ANSIYBIN)":"
 	rm -f $(TESTDIR)*.result
+	rm -f $(TESTDIR)*.result_err
 	echo $(ANSIGOK)

@@ -7,7 +7,6 @@ TEST_RESULTS=$(patsubst %.lc,%.res,$(TESTS))
 
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror -std=c89
-TRACEFLAG="-D TRACE"
 
 ANSIGREEN="\033[32m"
 ANSIYELLOW="\033[33m"
@@ -27,7 +26,7 @@ $(BINARY): $(CFILES)
 
 trace:
 	echo -n "** Building "$(ANSIYBIN)" w/Trace:"
-	$(CC) $(TRACEFLAG) $(CFLAGS) -o $(BINARY) $(CFILES) $(LFLAGS)
+	$(CC) $(CFLAGS) -o $(BINARY) $(CFILES) $(LFLAGS)
 	echo $(ANSIGOK)
 
 check: $(TEST_RESULTS)
