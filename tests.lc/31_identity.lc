@@ -1,5 +1,5 @@
 ;; -*- mode: scheme -*-
 
 ((lambda (identity)
-   (identity xx))
+   (identity <arg>))
  (lambda (i) i))
