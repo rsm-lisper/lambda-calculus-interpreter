@@ -1,7 +1,14 @@
 ;; -*- mode: scheme -*-
 
+((lambda (identity)
 ((lambda (apply)
-   ((apply (lambda (x) x)) 1))
- (lambda (func)
-   (lambda (arg)
-     (func arg))))
+((lambda (arg)
+         
+   ((apply identity) arg))
+
+ ;; arg:
+ <arg1>))
+ ;; apply:
+ (lambda (func) (lambda (arg) (func arg)))))
+ ;; identity:
+ (lambda (i) i))

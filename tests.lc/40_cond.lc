@@ -1,0 +1,39 @@
+;; -*- mode: scheme -*-
+
+((lambda [identity]
+((lambda [sel-first]
+((lambda [sel-second]
+((lambda [cond]
+((lambda [true]
+((lambda [false]
+((lambda [not]
+((lambda [and]
+((lambda [or]
+
+   (((cond <this-one>) <not-this>) true))
+ 
+;; or :
+[lambda (x) (lambda (y)
+  ((x true) y))]))
+;; and :
+[lambda (x) (lambda (y)
+  ((x y) false))]))
+;; not :
+[lambda (x)
+  (((cond false) true) x)]))
+;; false :
+sel-second))
+;; true :
+sel-first))
+;; cond :
+[lambda (et) (lambda (ef) (lambda (c)
+  ((c et) ef)))]))
+;; sel-second :
+[lambda (f) (lambda (s)
+  s)]))
+;; sel-first :
+[lambda (f) (lambda (s)
+  f)]))
+;; identity :
+[lambda (i)
+  i])

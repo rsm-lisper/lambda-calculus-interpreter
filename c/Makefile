@@ -24,11 +24,6 @@ $(BINARY): $(CFILES)
 	$(CC) $(CFLAGS) -o $@ $^ $(LFLAGS)
 	echo $(ANSIGOK)
 
-trace:
-	echo -n "** Building "$(ANSIYBIN)" w/Trace:"
-	$(CC) $(CFLAGS) -o $(BINARY) $(CFILES) $(LFLAGS)
-	echo $(ANSIGOK)
-
 check: $(TEST_RESULTS)
 	echo "** "$(ANSIBOLD)$(ANSIYBIN)" test results:"$(ANSIBOLD)$(ANSIGOK)
 

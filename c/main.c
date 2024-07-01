@@ -325,10 +325,6 @@ PData print_closure (PData cl, FILE *stream)
     print_symbol(closure_arg_name(cl), stream);
   fputs(") ", stream);
   print_data(closure_body(cl), stream);
-# ifdef TRACE
-  fputs(" | ", stream);
-  print_data(closure_env(cl), stream);
-# endif
   fputs(" >", stream);
   return cl;
 }

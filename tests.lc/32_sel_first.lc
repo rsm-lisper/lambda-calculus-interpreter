@@ -1,7 +1,5 @@
 ;; -*- mode: scheme -*-
 
 ((lambda (sel-first)
-   ((sel-first 1) 2))
- (lambda (f)
-   (lambda (s)
-     f)))
+   ((sel-first <arg1>) <arg2>))
+ (lambda (f) (lambda (s) f)))
