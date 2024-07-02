@@ -1,3 +1,3 @@
-SCRIPT=lci.php
+SCRIPT=main.php
 
 include ../Script.mk

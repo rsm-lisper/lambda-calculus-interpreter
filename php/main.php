@@ -70,7 +70,8 @@ function &svalue (&$symbol)
 
 function sequal (&$sa, &$sb)
 {
-    assert(is_symbol($sa) && is_symbol($sb));
+    assert(is_symbol($sa));
+    assert(is_symbol($sb));
     return svalue($sa) === svalue($sb);
 }
 
@@ -88,6 +89,12 @@ function &print_symbol (&$symbol, $stream)
     assert(is_symbol($symbol));
     fwrite($stream, $symbol['symbol']);
     return $symbol;
+}
+
+function &sprint_symbol (&$symbol)
+{
+    assert(is_symbol($symbol));
+    return $symbol['symbol'];
 }
 
 function &read_symbol ()
@@ -110,14 +117,16 @@ function &is_pair (&$data)
         array_key_exists('type', $data) &&
         array_key_exists('first', $data) &&
         array_key_exists('next', $data) &&
-        $data['type'] === D_PAIR) {
+        $data['type'] === D_PAIR)
+
         return $data;
-    }
     return $FALSE;
 }
 
 function &make_pair (&$first, &$next)
 {
+    assert(is_valid_data(first));
+    assert(is_valid_data(next));
     $pair = array(
         'type' => D_PAIR,
         'first' => $first,
@@ -141,6 +150,7 @@ function &pnext (&$pair)
 function &set_pfirst (&$pair, &$first)
 {
     assert(is_pair($pair));
+    assert(is_valid_data($pair));
     $pair['first'] = &$first;
     return $first;
 }
@@ -148,6 +158,7 @@ function &set_pfirst (&$pair, &$first)
 function &set_pnext (&$pair, &$next)
 {
     assert(is_pair($pair));
+    assert(is_valid_data($pair));
     $pair['next'] = &$next;
     return $next;
 }
@@ -192,6 +203,44 @@ function &print_pair_tree (&$pair, $stream)
     fwrite($stream, ')');
   
     return $p0;
+}
+
+function sprint_pair_tree (&$pair)
+{
+    $i = 0;
+    $ret = '';
+
+    if (!is_pair($pair))
+        return $ret;
+
+    while (is_pair($pair)) {
+        if ($i) $ret .= ' ';
+        else $i = 1;
+        $curr = &pfirst($pair);
+        if (is_symbol($curr))
+            $ret .= sprint_symbol($curr);
+        else if (is_closure($curr))
+            $ret .= sprint_closure($curr);
+        else if (is_pair($curr))
+            $ret .= sprint_pair_tree($curr);
+        else {
+            assert($curr === NULL);
+            $ret .= '()';
+        }
+        $pair = &pnext($pair);
+    }
+    if (is_symbol($pair)) {
+        if ($i) $ret .= ' ';
+        else $i = 1;
+        $ret .= '. '.sprint_symbol($pair);
+    }
+    else if (is_closure($pair)) {
+        if ($i) $ret .= ' ';
+        else $i = 1;
+        $ret .= '. '.sprint_closure($pair);
+    }
+  
+    return '('.$ret.')';
 }
 
 function &read_pair_tree ()
@@ -245,9 +294,9 @@ function &is_lambda (&$data)
         sequal(list_nth($data, 0), make_symbol('lambda')) &&
         is_list(list_nth($data, 1)) &&
         (list_length(list_nth($data, 1)) == 1 ||
-         list_length(list_nth($data, 1)) == 0)) {
+         list_length(list_nth($data, 1)) == 0))
+
         return $data;
-    }
     return $FALSE;
 }
 
@@ -276,15 +325,16 @@ function &is_closure (&$data)
         array_key_exists('arg_name', $data) &&
         array_key_exists('body', $data) &&
         array_key_exists('env', $data) &&
-        $data['type'] === D_CLOSURE) {
+        $data['type'] === D_CLOSURE)
 
         return $data;
-    }
     return $FALSE;
 }
 
 function &make_closure (&$lambda, &$env)
 {
+    assert(is_lambda($lambda));
+    assert(is_list($env));
     $cl = array(
         'type' => D_CLOSURE,
         'arg_name' => lambda_arg_name($lambda),
@@ -324,8 +374,21 @@ function &print_closure (&$cl, $stream)
     return $cl;
 }
 
+function sprint_closure (&$cl)
+{
+    assert(is_closure($cl));
+    return "#<closure (" .
+        (closure_arg_name($cl) ? sprint_symbol(closure_arg_name($cl)) : "") .
+        ") " . sprint_data(closure_body($cl)) . " >";
+}
+
 
 /***   L I S T   A N D   D A T A   T O O L S   ***/
+
+function &is_valid_data (&$data)
+{
+    return is_symbol($data) || is_pair($data) || is_closure($data);
+}
 
 function &print_data (&$data, $stream)
 {
@@ -340,6 +403,22 @@ function &print_data (&$data, $stream)
         fwrite($stream, "()");
     }
     return $data;
+}
+
+function sprint_data (&$data)
+{
+    $ret = '';
+    if (is_symbol($data))
+        $ret = sprint_symbol($data);
+    else if (is_closure($data))
+        $ret = sprint_closure($data);
+    else if (is_pair($data))
+        $ret = sprint_pair_tree($data);
+    else {
+        assert($data === NULL);
+        $ret = '()';
+    }
+    return $ret;
 }
 
 function is_list (&$data)
@@ -374,6 +453,9 @@ function &list_nth (&$list, $n)
 
 function &assoc_add (&$alist, &$key, &$value)
 {
+    assert(is_list($alist));
+    assert(is_symbol($key));
+    assert(is_valid_data($value));
     return make_pair(make_pair($key, $value), $alist);
 }
 
@@ -416,8 +498,11 @@ function &read_expr ()
 
 function &print_expr (&$expr)
 {
+    print sprint_data($expr)."\n";
+    /*
     print_data($expr, STDOUT);
     printf("\n");
+    */
     return $expr;
 }
 
@@ -425,15 +510,15 @@ function &print_expr (&$expr)
 function &eval_expr (&$expr, &$env)
 {
     $ret = NULL;
-    $case = '(unknown)';
+    $op = '(unknown)';
     
     if ($expr === NULL) {
         $ret = NULL;
-        $case = 'null';
+        $op = 'null';
     }
     else if (is_symbol($expr)) {
         $kval = &assoc_lookup($env, $expr);
-        $case = 'env-lookup';
+        $op = 'env-lookup';
         if ($kval)
             $ret = &pnext($kval);
         else
@@ -441,7 +526,7 @@ function &eval_expr (&$expr, &$env)
     }
     else if (is_lambda($expr)) {
         $ret = &make_closure($expr, $env);
-        $case = 'lambda';
+        $op = 'lambda';
     }
     else if (is_list($expr) && (list_length($expr) == 2 || list_length($expr) == 3)) {
         $last_cl = &list_nth($expr, 0);
@@ -464,7 +549,7 @@ function &eval_expr (&$expr, &$env)
             $new_env = &assoc_add(closure_env($cl), closure_arg_name($cl), $arg);
         }
         $ret = &eval_expr(closure_body($cl), $new_env);
-        $case = 'application';
+        $op = 'application';
     }
     else {
         fwrite(STDERR, "ERROR! eval_expr(): unrecognised expression: ");
@@ -478,7 +563,7 @@ function &eval_expr (&$expr, &$env)
     fwrite(STDERR, "\nENV: ");
     print_data($env, STDERR);
     fwrite(STDERR, "\nCASE: ");
-    fwrite(STDERR, $case);
+    fwrite(STDERR, $op);
     fwrite(STDERR, "\nRET: ");
     print_data($ret, STDERR);
     fwrite(STDERR, "\n\n");
