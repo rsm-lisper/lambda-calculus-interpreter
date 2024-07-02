@@ -70,7 +70,8 @@ function &svalue (&$symbol)
 
 function sequal (&$sa, &$sb)
 {
-    assert(is_symbol($sa) && is_symbol($sb));
+    assert(is_symbol($sa));
+    assert(is_symbol($sb));
     return svalue($sa) === svalue($sb);
 }
 
@@ -88,6 +89,12 @@ function &print_symbol (&$symbol, $stream)
     assert(is_symbol($symbol));
     fwrite($stream, $symbol['symbol']);
     return $symbol;
+}
+
+function &sprint_symbol (&$symbol)
+{
+    assert(is_symbol($symbol));
+    return $symbol['symbol'];
 }
 
 function &read_symbol ()
@@ -114,11 +121,6 @@ function &is_pair (&$data)
 
         return $data;
     return $FALSE;
-}
-
-function &is_valid_data (&$data)
-{
-    return is_symbol($data) || is_pair($data) || is_closure($data);
 }
 
 function &make_pair (&$first, &$next)
@@ -203,6 +205,44 @@ function &print_pair_tree (&$pair, $stream)
     return $p0;
 }
 
+function sprint_pair_tree (&$pair)
+{
+    $i = 0;
+    $ret = '';
+
+    if (!is_pair($pair))
+        return $ret;
+
+    while (is_pair($pair)) {
+        if ($i) $ret .= ' ';
+        else $i = 1;
+        $curr = &pfirst($pair);
+        if (is_symbol($curr))
+            $ret .= sprint_symbol($curr);
+        else if (is_closure($curr))
+            $ret .= sprint_closure($curr);
+        else if (is_pair($curr))
+            $ret .= sprint_pair_tree($curr);
+        else {
+            assert($curr === NULL);
+            $ret .= '()';
+        }
+        $pair = &pnext($pair);
+    }
+    if (is_symbol($pair)) {
+        if ($i) $ret .= ' ';
+        else $i = 1;
+        $ret .= '. '.sprint_symbol($pair);
+    }
+    else if (is_closure($pair)) {
+        if ($i) $ret .= ' ';
+        else $i = 1;
+        $ret .= '. '.sprint_closure($pair);
+    }
+  
+    return '('.$ret.')';
+}
+
 function &read_pair_tree ()
 {
     $pread = NULL;
@@ -285,17 +325,16 @@ function &is_closure (&$data)
         array_key_exists('arg_name', $data) &&
         array_key_exists('body', $data) &&
         array_key_exists('env', $data) &&
-        $data['type'] === D_CLOSURE) {
+        $data['type'] === D_CLOSURE)
 
         return $data;
-    }
     return $FALSE;
 }
 
 function &make_closure (&$lambda, &$env)
 {
-    assert(is_lambda(lambda));
-    assert(is_list(env));
+    assert(is_lambda($lambda));
+    assert(is_list($env));
     $cl = array(
         'type' => D_CLOSURE,
         'arg_name' => lambda_arg_name($lambda),
@@ -335,8 +374,21 @@ function &print_closure (&$cl, $stream)
     return $cl;
 }
 
+function sprint_closure (&$cl)
+{
+    assert(is_closure($cl));
+    return "#<closure (" .
+        (closure_arg_name($cl) ? sprint_symbol(closure_arg_name($cl)) : "") .
+        ") " . sprint_data(closure_body($cl)) . " >";
+}
+
 
 /***   L I S T   A N D   D A T A   T O O L S   ***/
+
+function &is_valid_data (&$data)
+{
+    return is_symbol($data) || is_pair($data) || is_closure($data);
+}
 
 function &print_data (&$data, $stream)
 {
@@ -351,6 +403,22 @@ function &print_data (&$data, $stream)
         fwrite($stream, "()");
     }
     return $data;
+}
+
+function sprint_data (&$data)
+{
+    $ret = '';
+    if (is_symbol($data))
+        $ret = sprint_symbol($data);
+    else if (is_closure($data))
+        $ret = sprint_closure($data);
+    else if (is_pair($data))
+        $ret = sprint_pair_tree($data);
+    else {
+        assert($data === NULL);
+        $ret = '()';
+    }
+    return $ret;
 }
 
 function is_list (&$data)
@@ -430,8 +498,11 @@ function &read_expr ()
 
 function &print_expr (&$expr)
 {
+    print sprint_data($expr)."\n";
+    /*
     print_data($expr, STDOUT);
     printf("\n");
+    */
     return $expr;
 }
 
