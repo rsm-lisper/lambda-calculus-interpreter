@@ -256,7 +256,7 @@ function &read_pair_tree ()
         }
         if ($c === '(' || $c === '[') {
             $sub_p = &read_pair_tree();
-            if ($sub_p !== NULL && !is_pair($sub_p))
+            if ($sub_p === -1)
                 return $sub_p;
             $np = &make_pair($sub_p, $NULL);
             if ($pread === NULL) {
@@ -487,7 +487,11 @@ function &read_expr ()
         return $NULL;
     }
     if ($c === '(' || $c === '[') {
-        return read_pair_tree();
+        $expr = &read_pair_tree();
+        if ($expr === -1)
+            return $NULL;
+        else
+            return $expr;
     }
     else {
         ungetchar($c);
@@ -499,10 +503,6 @@ function &read_expr ()
 function &print_expr (&$expr)
 {
     print sprint_data($expr)."\n";
-    /*
-    print_data($expr, STDOUT);
-    printf("\n");
-    */
     return $expr;
 }
 
@@ -531,7 +531,7 @@ function &eval_expr (&$expr, &$env)
     else if (is_list($expr) && (list_length($expr) == 2 || list_length($expr) == 3)) {
         $last_cl = &list_nth($expr, 0);
         $cl = NULL;
-        while (is_symbol($cl = &eval_expr($last_cl, $env)) && cl != $last_cl)
+        while (is_symbol($cl = &eval_expr($last_cl, $env)) && $cl != $last_cl)
             $last_cl = &$cl;
         if (!is_closure($cl)) {
             fwrite(STDERR, "ERROR! eval_expr(): expression is not a closure: ");
