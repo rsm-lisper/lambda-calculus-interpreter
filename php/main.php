@@ -56,9 +56,9 @@ function &is_symbol (&$data)
     if (is_array($data) &&
         array_key_exists('type', $data) &&
         array_key_exists('symbol', $data) &&
-        $data['type'] === D_SYMBOL) {
+        $data['type'] === D_SYMBOL)
+
         return $data;
-    }
     return $FALSE;
 }
 
@@ -91,7 +91,7 @@ function &print_symbol (&$symbol, $stream)
     return $symbol;
 }
 
-function &sprint_symbol (&$symbol)
+function symbol2str (&$symbol)
 {
     assert(is_symbol($symbol));
     return $symbol['symbol'];
@@ -100,10 +100,8 @@ function &sprint_symbol (&$symbol)
 function &read_symbol ()
 {
     $str = "";
-    while (($c = getchar()) !== FALSE &&
-           strchr("()[]; \t\r\n", $c) === FALSE) {
+    while (($c = getchar()) !== FALSE && strchr("()[]; \t\r\n", $c) === FALSE)
         $str .= $c;
-    }
     ungetchar($c);
     return make_symbol($str);
 }
@@ -205,7 +203,7 @@ function &print_pair_tree (&$pair, $stream)
     return $p0;
 }
 
-function sprint_pair_tree (&$pair)
+function pair_tree2str (&$pair)
 {
     $i = 0;
     $ret = '';
@@ -218,11 +216,11 @@ function sprint_pair_tree (&$pair)
         else $i = 1;
         $curr = &pfirst($pair);
         if (is_symbol($curr))
-            $ret .= sprint_symbol($curr);
+            $ret .= symbol2str($curr);
         else if (is_closure($curr))
-            $ret .= sprint_closure($curr);
+            $ret .= closure2str($curr);
         else if (is_pair($curr))
-            $ret .= sprint_pair_tree($curr);
+            $ret .= pair_tree2str($curr);
         else {
             assert($curr === NULL);
             $ret .= '()';
@@ -232,12 +230,12 @@ function sprint_pair_tree (&$pair)
     if (is_symbol($pair)) {
         if ($i) $ret .= ' ';
         else $i = 1;
-        $ret .= '. '.sprint_symbol($pair);
+        $ret .= '. '.symbol2str($pair);
     }
     else if (is_closure($pair)) {
         if ($i) $ret .= ' ';
         else $i = 1;
-        $ret .= '. '.sprint_closure($pair);
+        $ret .= '. '.closure2str($pair);
     }
   
     return '('.$ret.')';
@@ -374,12 +372,12 @@ function &print_closure (&$cl, $stream)
     return $cl;
 }
 
-function sprint_closure (&$cl)
+function closure2str (&$cl)
 {
     assert(is_closure($cl));
     return "#<closure (" .
-        (closure_arg_name($cl) ? sprint_symbol(closure_arg_name($cl)) : "") .
-        ") " . sprint_data(closure_body($cl)) . " >";
+        (closure_arg_name($cl) ? symbol2str(closure_arg_name($cl)) : "") .
+        ") " . data2str(closure_body($cl)) . " >";
 }
 
 
@@ -405,15 +403,15 @@ function &print_data (&$data, $stream)
     return $data;
 }
 
-function sprint_data (&$data)
+function data2str (&$data)
 {
     $ret = '';
     if (is_symbol($data))
-        $ret = sprint_symbol($data);
+        $ret = symbol2str($data);
     else if (is_closure($data))
-        $ret = sprint_closure($data);
+        $ret = closure2str($data);
     else if (is_pair($data))
-        $ret = sprint_pair_tree($data);
+        $ret = pair_tree2str($data);
     else {
         assert($data === NULL);
         $ret = '()';
@@ -502,7 +500,7 @@ function &read_expr ()
 
 function &print_expr (&$expr)
 {
-    print sprint_data($expr)."\n";
+    print data2str($expr)."\n";
     return $expr;
 }
 
@@ -519,16 +517,15 @@ function &eval_expr (&$expr, &$env)
     else if (is_symbol($expr)) {
         $kval = &assoc_lookup($env, $expr);
         $op = 'env-lookup';
-        if ($kval)
-            $ret = &pnext($kval);
-        else
-            $ret = &$expr;
+        if ($kval) $ret = &pnext($kval);
+        else       $ret = &$expr;
     }
     else if (is_lambda($expr)) {
         $ret = &make_closure($expr, $env);
         $op = 'lambda';
     }
-    else if (is_list($expr) && (list_length($expr) == 2 || list_length($expr) == 3)) {
+    else if (is_list($expr) &&
+             (list_length($expr) == 2 || list_length($expr) == 1)) {
         $last_cl = &list_nth($expr, 0);
         $cl = NULL;
         while (is_symbol($cl = &eval_expr($last_cl, $env)) && $cl != $last_cl)
