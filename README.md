@@ -1,17 +1,20 @@
+# Active development moved to [codeberg](https://codeberg.org/rsm/lambda-calculus-interpreter).
 
-# Lambda Calculus Interpreter
+------
+
+## Lambda Calculus Interpreter
 
 Lambda Calculus Interpreters implemented in couple different languages. Just for fun.
 
 Project in its early stage.
 
-# Valid Lambda Calculus Expression
+## Valid Lambda Calculus Expression
 
 Expression can be a **name** to identify an abstraction point, a **function** to introduce an abstraction or a **function application** to specialize an abstraction.
 
 `<expression>` ::= `<name>` | `<function>` | `<application>`
 
-## Name
+### Name
 
 Any sequence of non-special characters. Special characters are: ` `, `(`, `)`, `[`, `]`, and `;`. For example:
 
@@ -19,7 +22,7 @@ Any sequence of non-special characters. Special characters are: ` `, `(`, `)`, `
 10 some 7-and-not-5 :other: 0.0.111 -->
 ```
 
-## Function
+### Function
 
 Lambda function is an abstraction over a lambda expression and has the form:
 
@@ -39,7 +42,7 @@ For example:
 (lambda (func) (lambda (arg) (func arg)))
 ```
 
-## Application
+### Application
 
 A function application has the form:
 
@@ -59,7 +62,7 @@ For example:
 (((lambda (f) (lambda (n) f)) <first>) <next>)
 ```
 
-## Syntax extensions
+### Syntax extensions
 
 - `[` and `]` can be used interchangeably with `(` and `)`
 - any text between `;` and the end of line is ignored
